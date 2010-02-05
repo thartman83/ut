@@ -1,0 +1,3 @@
+# ignore emacs tmp files
+*~
+\#*#
