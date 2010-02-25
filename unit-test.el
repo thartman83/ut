@@ -35,7 +35,7 @@
 	"Face for test header"
 	:group 'unit-test)
 
-(defface unit-test-failed-face
+(defface unit-test-error-face
 	`((((class color) (background dark))
 		 (:foreground "red" :bold t))
 		(((class color) (background light))
@@ -152,19 +152,28 @@
 		(cond 
 		 ((null (second build-data))
 			(insert "\t * Not Built\n"))
-		 ((eq (second build-data) 'building)
-			(insert "\t" prefix "Building\n"))
+		 ((eq (second build-data) 'inprogress)
+			(insert "\t" prefix "Building " 
+							(number-to-string (unit-test-build-percentage (first build-data))) "%\n"))
 		 ((eq (second build-data) 0)
 			(insert (concat "\t" prefix 
 											(propertize "Build Complete!\n"
 																	'face 'unit-test-succeeded-face))))
 		 (t (insert (concat "\t" prefix 
 												(propertize "Build Failed!\n"
-																		'face 'unit-test-failed-face)))))
+																		'face 'unit-test-error-face)))))
 		(if (not (null (third build-data)))
 				(insert (unit-test-strip-colors 
 								 (unit-test-indent-lines (first build-data)))))))
 	 
+(defun unit-test-build-percentage (data)
+	(let ((lines (split-string data "[\n]")))
+		(loop for line in lines maximize
+				 (progn 
+					 (if (string-match "^\\[ *\\([0-9]*\\)" line)
+							 (string-to-number (match-string 1 line)) 0)))))
+		
+
 (defun unit-test-print-test (test-name test-data)
 	(let ((prefix (if (null (third test-data)) " + " " - ")))
 		(cond
@@ -172,7 +181,7 @@
 			(insert "\t * Test Not Run\n"))
 		 ((eq (second test-data) 'error) 
 			(insert "\t" prefix (propertize "Test threw an error\n" 'face 
-																			'unit-test-failed-face)))
+																			'unit-test-error-face)))
 		 ((eq (second test-data) 'testing)
 			(insert (concat "\t" prefix "Test Running: " 
 											(unit-test-summarize-test test-name))))
@@ -180,6 +189,30 @@
 												(unit-test-summarize-test test-name)))))
 		(if (not (null (third test-data)))
 				(insert (unit-test-indent-lines (first test-data))))))
+
+;(defmacro unit-test-print-func-gen (func-name not-run-str error-str inprogress-str 
+;																		done-str)
+;	(macrolet ((print-line (&rest args) (insert "\t" prefix ,@line "\n")))
+;		`(defun ,(make-symbol (concat "unit-test-print-" func-name)) (test-name data)
+;			 (let ((prefix (if (null (third data)) " + " " - ")))
+;				 (cond
+;					 ((null (second data))
+;						(print-line ,not-run-str))
+;					 ((eq (second data) 'error)
+;						(print-line (propertize ,error-str 'face 'unit-test-error-face)))
+;					 ((eq (second data) 'inprogress)
+;						(print-line ,inprogress-str 
+;												(,(make-symbol (concat "unit-test-summarize-"	func-name)) 
+;													test-name)))
+;					 (t 
+;						(print-line ,done-str 
+;										(,(make-symbol (concat "unit-test-summarize-" func-name))
+;											test-name))))
+;			 (if (not (null (third data)))
+;					 (insert (unit-test-indent-lines (first data))))))))
+
+;(unit-test-print-func-gen "test" " * Test Not Run" "Test threw an error"
+;													"Test Running: " "Test Summary: ")
 
 (defun unit-test-recompile (&rest tests)
 	(interactive)
@@ -190,7 +223,7 @@
 	 (let ((test-name (pop unit-test-compile-list)))
 		 (cd (concat unit-test-dir test-name))
 		 (unit-test-clear-build-data test-name)
-		 (unit-test-update-build-status test-name 'building)
+		 (unit-test-update-build-status test-name 'inprogress)
 		 (if (get-process test-name)
 				 (delete-process (get-process test-name)))
 		 (let ((proc (start-process test-name nil "make" "-j3" "-k")))
@@ -199,6 +232,9 @@
 
 (defun unit-test-recompile-all ()
 	(interactive)
+	(dolist (test unit-test-data)
+		(unit-test-clear-build-data (first test))
+		(unit-test-refresh-test (first test)))
 	(apply 'unit-test-recompile (mapcar 'car unit-test-data)))
 	
 (defun unit-test-rerun (&rest tests)
@@ -210,7 +246,7 @@
 	 (let ((test-name (pop unit-test-run-list)))
 		 (cd (concat unit-test-dir test-name))
 		 (unit-test-clear-test-data test-name)
-		 (unit-test-update-test-status test-name 'testing)
+		 (unit-test-update-test-status test-name 'inprogress)
 		 (if (get-process test-name)
 				 (delete-process (get-process test-name)))
 		 (let ((proc (start-process-shell-command test-name nil 
@@ -220,6 +256,9 @@
 
 (defun unit-test-rerun-all ()
 	(interactive)
+	(dolist (test unit-test-data)
+		(unit-test-clear-test-data (first test))
+		(unit-test-refresh-test (first test)))
 	(apply 'unit-test-rerun (mapcar 'car unit-test-data)))
 
 (defun unit-test-test-by-point ()
@@ -318,7 +357,7 @@
 
 (defun unit-test-stylize-summary (passes fails skips)
 	(format (concat (propertize "Passed: %d" 'face 'unit-test-succeeded-face) ", "
-									(propertize "Failed: %d" 'face 'unit-test-failed-face) ", "
+									(propertize "Failed: %d" 'face 'unit-test-error-face) ", "
 									(propertize "Skips: %d\n" 'face 'unit-test-skipped-face))
 					passes fails skips))
 
@@ -418,8 +457,7 @@
 (defun unit-test-clear-build-data (test-name)
 	(let ((data (assoc test-name unit-test-data)))
 		(if (not (null data))
-				(replace data (list test-name (list "" (second (second data)) 
-																						(third (second data)))
+				(replace data (list test-name (list "" nil (third (second data)))	
 														(third data))))))
 
 (defun unit-test-clear-test-data (test-name)
@@ -427,7 +465,7 @@
 		(if (null data)
 				(unit-test-init-test test-name))
 		(replace data (list test-name (second data) 
-												(list "" (second (third data)) (third (third data)))))))
+												(list "" nil (third (third data)))))))
 
 (defun unit-test-append-build-data (test-name string)
 	(let ((data (assoc test-name unit-test-data)))
