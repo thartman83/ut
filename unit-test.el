@@ -62,7 +62,7 @@
 	"Face for skipped results"
 	:group 'unit-test)
 
-;; A macro similar to save-excursion but for directories
+; A macro similar to save-excursion but for directories
 (defmacro save-directory (&rest body)
 	`(let ((old-dir default-directory)
 				 (retval (progn ,@body)))
@@ -84,15 +84,23 @@
 
 (defun unit-test-parse-test-file (test-list)
 	(setf unit-test-file test-list)
-	(setf unit-test-file (file-name-directory test-list))
 	(setf unit-test-data nil)
 	(when (file-readable-p test-list)
-		(let ((tests (with-temp-buffer
+		(let ((contents (with-temp-buffer
 									 (insert-file-contents test-list)
 									 (read (buffer-substring (point-min) (point-max))))))
-			(dolist (test tests)
-				(unit-test-add-test test)))))
+			(mapc #'unit-test-parse-pair contents))))
 
+(defun unit-test-parse-pair (pair)
+	(cond
+	 ((equal (car pair) 'project-dir) 
+		(setf unit-test-project-dir (cadr pair)))
+	 ((equal (car pair) 'bin-dir)
+		(setf unit-test-bin-dir (cadr pair)))
+	 ((equal (car pair) 'tests)
+		(dolist (test (cadr pair))
+			(unit-test-add-test test)))))
+															
 (defun unit-test-display ()
 	"Sets up the basic buffer contents for *unit-test*"
 	(kill-region (point-min) (point-max))
@@ -190,30 +198,6 @@
 		(if (not (null (third test-data)))
 				(insert (unit-test-indent-lines (first test-data))))))
 
-;(defmacro unit-test-print-func-gen (func-name not-run-str error-str inprogress-str 
-;																		done-str)
-;	(macrolet ((print-line (&rest args) (insert "\t" prefix ,@line "\n")))
-;		`(defun ,(make-symbol (concat "unit-test-print-" func-name)) (test-name data)
-;			 (let ((prefix (if (null (third data)) " + " " - ")))
-;				 (cond
-;					 ((null (second data))
-;						(print-line ,not-run-str))
-;					 ((eq (second data) 'error)
-;						(print-line (propertize ,error-str 'face 'unit-test-error-face)))
-;					 ((eq (second data) 'inprogress)
-;						(print-line ,inprogress-str 
-;												(,(make-symbol (concat "unit-test-summarize-"	func-name)) 
-;													test-name)))
-;					 (t 
-;						(print-line ,done-str 
-;										(,(make-symbol (concat "unit-test-summarize-" func-name))
-;											test-name))))
-;			 (if (not (null (third data)))
-;					 (insert (unit-test-indent-lines (first data))))))))
-
-;(unit-test-print-func-gen "test" " * Test Not Run" "Test threw an error"
-;													"Test Running: " "Test Summary: ")
-
 (defun unit-test-recompile (&rest tests)
 	(interactive)
 	(when (null tests)
@@ -244,13 +228,13 @@
 	(setf unit-test-run-list tests)
 	(save-directory
 	 (let ((test-name (pop unit-test-run-list)))
-		 (cd (concat unit-test-dir test-name))
+		 (cd (concat unit-test-project-dir "/" unit-test-bin-dir))
 		 (unit-test-clear-test-data test-name)
 		 (unit-test-update-test-status test-name 'inprogress)
 		 (if (get-process test-name)
 				 (delete-process (get-process test-name)))
 		 (let ((proc (start-process-shell-command test-name nil 
-																							(concat "./" test-name "Test"))))
+																							(concat "./" "test_" test-name))))
 			 (set-process-filter proc 'unit-test-test-filter)
 			 (set-process-sentinel proc 'unit-test-test-sentinel)))))
 
@@ -267,8 +251,8 @@
 		(while (string-match "\t" (buffer-substring (point) (+ (point) 1)))
 			(previous-line))
 		(let ((beg (point)))
-			(forward-word)
-			(buffer-substring beg	(point)))))
+			(search-forward " ")
+			(buffer-substring beg	(- (point) 1)))))
 
 (defun unit-test-build-or-test-by-point ()
 	(save-excursion
@@ -396,6 +380,21 @@
 	(setf unit-test-data nil)
 	(kill-buffer (current-buffer)))
 
+(defun unit-test-debug ()
+	(interactive)
+	(let ((test-name (unit-test-test-by-point)))
+		(gdb (concat "gdb --annotate=3 " unit-test-project-dir "/" unit-test-bin-dir
+								 "/test_" test-name))))
+
+(defun unit-test-profile ()
+	(interactive)
+	(let ((test-path (concat unit-test-project-dir "/" unit-test-bin-dir "/test_"
+													 (unit-test-test-by-point)))
+				(buf (get-buffer-create "*valgrind output*")))
+		(switch-to-buffer buf)
+		(shell-command (concat "valgrind --leak-check=full --track-origins=yes "
+													 test-path) buf buf)))
+
 ;; Setup the keyboard mapping for the major mode
 (defvar unit-test-mode-map
 	(let ((map (make-sparse-keymap)))
@@ -409,6 +408,8 @@
 		(define-key map "c" 'unit-test-recompile)
 		(define-key map "C" 'unit-test-recompile-all)
 		(define-key map "q" 'unit-test-quit)
+		(define-key map "d" 'unit-test-debug)
+		(define-key map "v" 'unit-test-profile)
 		map))
 
 (define-derived-mode unit-test-mode fundamental-mode "Unit Tests"
@@ -420,6 +421,8 @@
 	(make-local-variable 'unit-test-file)
 	(make-local-variable 'unit-test-compile-list)
 	(make-local-variable 'unit-test-run-list)
+	(make-local-variable 'unit-test-project-dir)
+	(make-local-variable 'unit-test-bin-dir)
 	(use-local-map unit-test-mode-map)
 	(setq darcsum-data nil))
 
