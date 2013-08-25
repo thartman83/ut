@@ -18,22 +18,46 @@
 ;;; Code:
 
 (require 'f)
-(require 'testel "../")
+(require 'test-helper)
+(require 'ut (f-join (f-parent (f-this-file)) "../ut.el"))
 
-(setf default-output-buffer "*ut-tests*")
-(get-buffer-create default-output-buffer)
+;; test test-suite addition and removal functions
 
-(defunittest test-ut-new-test-suite
-	"Test ut-new-test-suite."
-	("Test adding a new suite."
-	 (testel= (length (get 'ut-conf 'tests)) 0)
-	 (ut-new-test-suite "foo" "~/" 'cppunit)
-	 (testel= (length (get 'ut-conf 'tests)) 1)
-	 (testel-string= (ut-test-suite-name (first (get 'ut-conf 'tests)))
-									 "foo")
-	 (testel-string= (ut-test-suite-test-dir (first (get 'ut-conf 'tests)))
-									 "~/")
-	 (testel-eq (ut-test-suite-type (first (get 'ut-conf 'tests))) 'cppunit)))
+(ert-deftest test-ut-new-test-suite ()
+	(ut-reset-conf)
+	(should (= (length (ut-count-test-suites)) 0))
+	(ut-new-test-suite "foo" "~/" 'cppunit)
+	(should (= (length (ut-count-test-suites)) 1))
+	(should (string= (ut-test-suite-name (first (get 'ut-conf 'tests))) "foo"))
+	(should (string= (ut-test-suite-test-dir (first (get 'ut-conf 'tests))) "~/"))
+	(should (equal (ut-test-suite-framework (first (get 'ut-conf 'tests))) 'cppunit)))
+
+(ert-deftest test-ut-adding-and-deleting-suites ()
+	(ut-reset-conf)
+	(should (= (ut-count-test-suites) 0))
+	(ut-new-test-suite "foo" "~/" 'cppunit)
+	(should (= (ut-count-test-suites) 1))
+	(ut-del-test-suite "foo")
+	(should (= (ut-count-test-suites) 0)))
+
+(ert-deftest test-errors-on-add-and-del-test-suite ()
+	(ut-reset-conf)
+	(should (= (ut-count-test-suites) 0))
+	(should-error (ut-del-test-suite "foo")
+								"Test suite 'foo' does not exist")
+	(ut-new-test-suite "foo" "~/" 'cppunit)
+	(should-error (ut-new-test-suite "foo" "~/" 'cppunit)
+								"Test suite 'foo' already exists")
+	(should-error (ut-del-test-suite "bar")
+								"Test suite 'bar' does not exist"))
+
+(ert-deftest test-ut-get-test-suite ()
+	(ut-reset-conf)
+	(let ((suite (car (ut-new-test-suite "foo" "~/" 'cppunit))))
+		(should (equal (ut-get-test-suite "foo") suite)))
+	(let ((suite (car (ut-new-test-suite "bar" "~/" 'cppunit))))
+		(should (equal (ut-get-test-suite "bar") suite)))
+	(should-error (ut-get-test-suite "baz") "Test suite 'baz' does not exist"))
 
 (provide 'test-ut)
 

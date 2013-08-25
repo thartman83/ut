@@ -163,9 +163,20 @@ Returns nil if the file does not exist."
 	(when (not (ut-test-suite-exists-p name))
 		(error "Test suite '%s' does not exist" name))
 	(setf (get 'ut-conf 'tests)
-				(remove-if #'(lambda (test-suite)
+				(cl-remove-if #'(lambda (test-suite)
 											 (string= (ut-test-suite-name test-suite) name))
 									 (get 'ut-conf 'tests))))
+
+(defun ut-count-test-suites ()
+	"Return the number of currently defined test suites."
+	(length (get 'ut-conf 'tests)))
+
+(defun ut-get-test-suite (name)
+	"Return test suite object with NAME."
+	(when (not (ut-test-suite-exists-p name))
+		(error "Test suite '%s' does not exist" name))
+	(cl-find name (get 'ut-conf 'tests)
+					 :test #'(lambda (n suite) (string= (ut-test-suite-name suite) n))))
 
 ;; Functions to read, write and manipulate the ut configuration file
 
@@ -191,6 +202,12 @@ Fields:
 (defun ut-parse-conf (test-conf)
 	"Parse the TEST-CONF File into a plist."
 	(setplist 'ut-conf (read-file-contents test-conf)))
+
+(defun ut-reset-conf ()
+	"Reset configuration to blank."
+	(mapc #'(lambda (s) (put 'ut-conf s nil))
+				(list 'project-name 'project-dir 'test-dir 'tests))
+	nil)
 
 ;; Functions to print data into the ut buffer
 
@@ -263,7 +280,7 @@ Fields:
 	(make-local-variable 'ut-bin-dir)
 	(use-local-map ut-mode-map))
 
-(provide 'ut-mode)
+(provide 'ut)
 
 ;; Local Variables:
 ;; byte-compile-warnings: (not cl-functions)
