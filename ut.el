@@ -121,11 +121,11 @@
 	name
 	test-dir
 	framework
-	(hide-suite t)
-	(compile-process nil)
-	(hide-compilation t)
-	(run-process nil)
-	(hide-run t))
+	(hidet)
+	(build-process nil)
+	(hide-build t)
+	(test-process nil)
+	(hide-test t))
 
 ;; Helper functions
 (defun read-file-contents (filename)
@@ -231,7 +231,46 @@ Fields:
 	(with-current-buffer (get-buffer-create ut-buffer-name)
 		(insert (if (ut-fold-test-p test-name) "+" "-") test-name)))
 
-;; 
+;; Buffer printing defuns
+
+(defun ut-print-display (&optional stream)
+	"Print the ut main display to STREAM.
+
+If STREAM does not exist use the default output buffer."
+	(when (null stream)
+		(setf stream (get-buffer-create ut-buffer-name)))
+	(ut-print-header stream)
+	(mapc #'(lambda (suite) (ut-print-test-suite suite stream))
+				(get 'ut-conf 'tests))
+	(ut-print-summary stream))
+
+(defun ut-print-header (&optional stream)
+	"Print the header information of the test suites to STREAM.
+
+If STREAM does not exist use the default output buffer."
+	(when (null stream)
+		(setf stream (get-buffer-create ut-buffer-name)))
+	(princ (format "* Unit tests for %s *\n" (get 'ut-conf 'project-name)) stream))
+
+(defun ut-print-test-suite (suite stream)
+	"Pretty print SUITE to STREAM."
+	(princ
+	 (if (ut-test-suite-hide suite)
+			 (format "+ %s: %s\n"
+							 (ut-test-suite-name suite)
+							 (ut-print-test-suite-summary stream))
+		 (format "- %s:\n%s\n%s\n%s"
+						 (ut-test-suite-name suite)
+						 (ut-print-test-suite-build stream)
+						 (ut-print-test-suite-runner stream)
+						 (ut-print-test-suite-summary stream)))
+	 stream))
+
+(defun ut-print-summary (stream)
+	"Prety print the summary of all test suites to STREAM."
+	())
+
+;; Main entry function and mode defuns
 
 (defun ut (test-conf)
 		"Start up unit testing.

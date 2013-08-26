@@ -18,16 +18,16 @@
 ;;; Code:
 
 (require 'f)
-(require 'test-helper)
+(require 'test-helpers (f-join (f-parent (f-this-file)) "test-helpers.el"))
 (require 'ut (f-join (f-parent (f-this-file)) "../ut.el"))
 
 ;; test test-suite addition and removal functions
 
 (ert-deftest test-ut-new-test-suite ()
 	(ut-reset-conf)
-	(should (= (length (ut-count-test-suites)) 0))
+	(should (= (ut-count-test-suites) 0))
 	(ut-new-test-suite "foo" "~/" 'cppunit)
-	(should (= (length (ut-count-test-suites)) 1))
+	(should (= (ut-count-test-suites) 1))
 	(should (string= (ut-test-suite-name (first (get 'ut-conf 'tests))) "foo"))
 	(should (string= (ut-test-suite-test-dir (first (get 'ut-conf 'tests))) "~/"))
 	(should (equal (ut-test-suite-framework (first (get 'ut-conf 'tests))) 'cppunit)))

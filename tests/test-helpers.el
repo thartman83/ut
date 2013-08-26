@@ -19,14 +19,14 @@
 
 ;;; Code:
 
-(defmacro should-error (test error-message)
-	"Run TEST and expect error ERROR-MESSAGE."
+(defmacro should-error (test expected)
+	"Run TEST and expect error EXPECTED."
 	(let ((err (gensym "err")))
 		`(condition-case ,err
 				 (progn
 					 ,test
 					 (should nil))
-			 (error (should (string=  (error-message-string ,err) ,error-message))))))
+			 (error (should (string= (error-message-string ,err) ,expected))))))
 
 (provide 'test-helpers)
 
