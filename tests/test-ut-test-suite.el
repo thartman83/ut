@@ -1,4 +1,4 @@
-;;; test-ut.el --- Tests for ut
+;;; test-ut-test-suite.el --- Tests for ut
 
 ;; Copyright (c) 2013 Thomas Hartman (rokstar83@gmail.com)
 
@@ -18,6 +18,7 @@
 ;;; Code:
 
 (require 'f)
+(require 'file-utils)
 (require 'test-helpers (f-join (f-parent (f-this-file)) "test-helpers.el"))
 (require 'ut (f-join (f-parent (f-this-file)) "../ut.el"))
 
@@ -59,10 +60,6 @@
 		(should (equal (ut-get-test-suite "bar") suite)))
 	(should-error (ut-get-test-suite "baz") "Test suite 'baz' does not exist"))
 
-;; test configuration reading, parsing and writing
+(provide 'test-ut-test-suite)
 
-
-
-(provide 'test-ut)
-
-;;; test-ut.el ends here
+;;; test-ut-test-suite.el ends here

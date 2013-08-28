@@ -180,6 +180,22 @@ Returns nil if the file does not exist."
 
 ;; Functions to read, write and manipulate the ut configuration file
 
+(defun ut-project-name ()
+	"Return project name associated with the current unit testing environment."
+	(get 'ut-conf 'project-name))
+
+(defun ut-project-dir ()
+	"Return project dir associated with the current unit testing environment."
+	(get 'ut-conf 'project-dir))
+
+(defun ut-test-dir ()
+	"Return test dir associated with the current unit testing environment."
+	(get 'ut-conf 'test-dir))
+
+(defun ut-tests ()
+	"Return test suites associated with the current unit testing environment."
+	(get 'ut-conf 'tests))
+
 (defun ut-new-conf (&optional test-conf project-name project-dir test-dir)
 	"Interactively ask user for the fields to fill TEST-CONF with.
 
@@ -190,14 +206,15 @@ Fields:
 	(interactive "FConfiguration file: \nsProject name: \nDProject Directory: \nDTest Directory: ")
 	(when (not (file-writable-p test-conf))
 		(error "Could not create new test configuration file `%s'" test-conf))
-	(let ((buf (get-buffer-create test-conf)))
+	(let ((buf (generate-new-buffer test-conf)))
 		(put 'ut-conf 'project-name project-name)
 		(put 'ut-conf 'project-dir project-dir)
 		(put 'ut-conf 'test-dir test-dir)
 		(put 'ut-conf 'tests '())
 		(with-current-buffer buf
 			(prin1 (symbol-plist 'ut-conf) buf)
-			(write-file test-conf))))
+			(write-file test-conf)
+			(kill-buffer buf))))
 
 (defun ut-parse-conf (test-conf)
 	"Parse the TEST-CONF File into a plist."
