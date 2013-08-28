@@ -1,0 +1,1 @@
+(variable-documentation "Configuration for unit tests." project-name "Example" project-dir "~/projects/ut/tests/data/" test-dir "~/projects/ut/tests/data/" tests ([cl-struct-ut-test-suite "Bar" "data/" cppunit nil nil t nil t] [cl-struct-ut-test-suite "Foo" "data/" cppunit nil nil t nil t]))

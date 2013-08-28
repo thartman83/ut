@@ -211,10 +211,7 @@ Fields:
 		(put 'ut-conf 'project-dir project-dir)
 		(put 'ut-conf 'test-dir test-dir)
 		(put 'ut-conf 'tests '())
-		(with-current-buffer buf
-			(prin1 (symbol-plist 'ut-conf) buf)
-			(write-file test-conf)
-			(kill-buffer buf))))
+		(ut-write-conf test-conf)))
 
 (defun ut-parse-conf (test-conf)
 	"Parse the TEST-CONF File into a plist."
@@ -225,6 +222,10 @@ Fields:
 	(mapc #'(lambda (s) (put 'ut-conf s nil))
 				(list 'project-name 'project-dir 'test-dir 'tests))
 	nil)
+
+(defun ut-write-conf (path)
+	"Write the currently defined unit testing configuration to PATH."
+	(f-write-text (format "%S" (symbol-plist 'ut-conf)) 'utf-8 path))
 
 ;; Functions to print data into the ut buffer
 
