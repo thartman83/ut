@@ -19,6 +19,9 @@
 
 ;;; Code:
 
+(eval-when-compile
+	(require 'cl))
+
 (defmacro should-error (test expected)
 	"Run TEST and expect error EXPECTED."
 	(let ((err (gensym "err")))

@@ -42,6 +42,10 @@
 (eval-when-compile
 	(require 'cl))
 
+(require 'dash)
+(require 'f)
+(require 'ht)
+
 ;; Groups
 
 (defgroup ut nil
@@ -109,25 +113,23 @@
 	:type 'hook
 	:risky t)
 
-(defvar-local ut-conf nil
-	"Configuration for unit tests.")
+;; Vars and consts
 
-(defconst ut-buffer-name
-	"*Unit Tests*"
+(defconst ut-buffer-name "*Unit Tests*"
 	"Name of the buffer to display unit test information.")
 
-(defstruct ut-test-suite
-	"Structure to hold suite data"
-	name
-	test-dir
-	framework
-	(hidet)
-	(build-process nil)
-	(hide-build t)
-	(test-process nil)
-	(hide-test t))
+(defvar ut-conf (make-hash-table)
+	"Dictionary of configuration variables for unit tests.
 
-;; Helper functions
+Symbol -> Values:
+
+   project-name -> Project name (string)
+   project-dir -> Root directory of the project (path)
+   test-dir -> Root directory of the unit tests (path)
+   tests -> Dictionary of test suites (hash-table)")
+
+;; Misc helper functions
+
 (defun read-file-contents (filename)
   "Read the contents of FILENAME and return it as a Lisp form.
 Returns nil if the file does not exist."
@@ -136,65 +138,46 @@ Returns nil if the file does not exist."
                         (read (buffer-substring (point-min) (point-max))))
     nil))
 
-;; Functions to manipulate the list of tests in ut-conf
-
-(defun ut-new-test-suite (&optional name test-dir framework)
-	"Add test suite NAME in TEST-DIR using FRAMEWORK for testing."
-	(interactive (let* ((n (read-string "Test suite name: "))
-											(default-path (concat (get 'ut-conf 'test-dir) n))
-											(d (read-directory-name "Path to test: " default-path
-																							default-path nil))
-											(f (read-test-suite-type)))
-								 (list n d f)))
-	(when (ut-test-suite-exists-p name)
-		(error "Test suite '%s' already exists" name))
-	(push (make-ut-test-suite :name name :test-dir test-dir :framework framework)
-				(get 'ut-conf 'tests)))
-
-(defun ut-test-suite-exists-p (name)
-	"Test whether NAME is a test-suite."
-	(not (null (member name (mapcar #'(lambda (test-suite)
-																			(ut-test-suite-name test-suite))
-																	(get 'ut-conf 'tests))))))
-
-(defun ut-del-test-suite (&optional name)
-	"Remote test suite NAME from the list of test suites."
-	(interactive (read-string "Test suite name: "))
-	(when (not (ut-test-suite-exists-p name))
-		(error "Test suite '%s' does not exist" name))
-	(setf (get 'ut-conf 'tests)
-				(cl-remove-if #'(lambda (test-suite)
-											 (string= (ut-test-suite-name test-suite) name))
-									 (get 'ut-conf 'tests))))
-
-(defun ut-count-test-suites ()
-	"Return the number of currently defined test suites."
-	(length (get 'ut-conf 'tests)))
-
-(defun ut-get-test-suite (name)
-	"Return test suite object with NAME."
-	(when (not (ut-test-suite-exists-p name))
-		(error "Test suite '%s' does not exist" name))
-	(cl-find name (get 'ut-conf 'tests)
-					 :test #'(lambda (n suite) (string= (ut-test-suite-name suite) n))))
-
 ;; Functions to read, write and manipulate the ut configuration file
 
-(defun ut-project-name ()
-	"Return project name associated with the current unit testing environment."
-	(get 'ut-conf 'project-name))
+;; Accessors
 
-(defun ut-project-dir ()
-	"Return project dir associated with the current unit testing environment."
-	(get 'ut-conf 'project-dir))
+(defun ut-project-name (&optional conf)
+	"Return project name associated with CONF.
 
-(defun ut-test-dir ()
-	"Return test dir associated with the current unit testing environment."
-	(get 'ut-conf 'test-dir))
+If CONF is not specified, use the variable ut-conf."
+	(gethash 'project-name (if (null conf) ut-conf conf)))
 
-(defun ut-tests ()
-	"Return test suites associated with the current unit testing environment."
-	(get 'ut-conf 'tests))
+(defun ut-project-dir (&optional conf)
+	"Return project dir associated with CONF.
+
+If CONF is not specified, use the variable ut-conf."
+	(gethash 'project-dir (if (null conf) ut-conf conf)))
+
+(defun ut-test-dir (&optional conf)
+	"Return test dir associated with CONF.
+
+If CONF is not specified, use the variable ut-conf."
+	(gethash 'test-dir (if (null conf) ut-conf conf)))
+
+(defun ut-test-suites (&optional conf)
+	"Return test suites associated with CONF.
+
+If CONF is not specified, use the variable ut-conf."
+	(gethash 'test-suites (if (null conf) ut-conf conf)))
+
+;; predicates
+
+(defun ut-conf-p (conf)
+	"Return t if CONF is a valid unit test configuration, nil otherwise."
+	(cond ((not (hash-table-p conf)) nil)
+				((null (ut-project-name conf)) nil)
+				((null (ut-project-dir conf)) nil)
+				((null (ut-test-dir conf)) nil)
+				((not (-all? #'ut-test-suite-p (ut-test-suites))) nil)
+				(t t)))
+
+;; creation and manipulation
 
 (defun ut-new-conf (&optional test-conf project-name project-dir test-dir)
 	"Interactively ask user for the fields to fill TEST-CONF with.
@@ -207,25 +190,93 @@ Fields:
 	(when (not (file-writable-p test-conf))
 		(error "Could not create new test configuration file `%s'" test-conf))
 	(let ((buf (generate-new-buffer test-conf)))
-		(put 'ut-conf 'project-name project-name)
-		(put 'ut-conf 'project-dir project-dir)
-		(put 'ut-conf 'test-dir test-dir)
-		(put 'ut-conf 'tests '())
-		(ut-write-conf test-conf)))
+		(setf ut-conf (ht ('project-name project-name)
+											('project-dir project-dir)
+											('test-dir test-dir)
+											('test-suites nil)))
+		(ut-write-conf test-conf)
+		ut-conf))
 
-(defun ut-parse-conf (test-conf)
-	"Parse the TEST-CONF File into a plist."
-	(setplist 'ut-conf (read-file-contents test-conf)))
+(defun ut-parse-conf (test-conf-file)
+	"Parse the TEST-CONF-FILE into a plist."
+	(let ((new-conf (read-file-contents test-conf-file)))
+		(if (ut-conf-p new-conf)
+			(setf ut-conf new-conf)
+			(error "'%s' does not specify a valid unit testing configuration" test-conf-file))))
 
 (defun ut-reset-conf ()
 	"Reset configuration to blank."
-	(mapc #'(lambda (s) (put 'ut-conf s nil))
-				(list 'project-name 'project-dir 'test-dir 'tests))
-	nil)
+	(setf ut-conf (make-hash-table)))
 
 (defun ut-write-conf (path)
 	"Write the currently defined unit testing configuration to PATH."
-	(f-write-text (format "%S" (symbol-plist 'ut-conf)) 'utf-8 path))
+	(f-write-text (format "%S" ut-conf) 'utf-8 path))
+
+;; Functions to manipulate the list of tests in ut-conf
+
+;; accessors
+
+(defun ut-test-suite-name (test-suite)
+	"Return the name associated with TEST-SUITE."
+	(gethash 'name test-suite))
+
+(defun ut-test-suite-test-dir (test-suite)
+	"Return the test directory associated with TEST-SUITE."
+	(gethash 'test-dir test-suite))
+
+(defun ut-test-suite-framework (test-suite)
+	"Return the framework associated with TEST-SUITE."
+	(gethash 'framework test-suite))
+
+(defun ut-get-test-suite (name)
+	"Return test suite object with NAME."
+	(when (not (ut-test-suite-exists-p name))
+		(error "Test suite '%s' does not exist" name))
+	(--first (string= (ut-test-suite-name it) name) (ut-test-suites)))
+
+;; predicates
+
+(defun ut-test-suite-exists-p (name)
+	"Test whether NAME is a test-suite."
+	(--any? (string= (ut-test-suite-name it) name) (ut-test-suites)))
+
+(defun ut-test-suite-p (test-suite)
+	"Return t if TEST-SUITE is a valid test-suite, nil otherwise."
+	(cond ((stringp (ut-test-suite-name test-suite)) nil)
+				((stringp (ut-test-suite-test-dir test-suite)) nil)
+				((f-exists? (ut-test-suite-test-dir test-suite)) nil)
+				((not (memq test-suite test-frameworks)) nil)
+				(t t)))
+
+;; mutators
+
+(defun ut-new-test-suite (&optional name test-dir framework)
+	"Add test suite NAME in TEST-DIR using FRAMEWORK for testing."
+	(interactive (let* ((n (read-string "Test suite name: "))
+											(default-path (f-join (ut-conf-test-dir) n))
+											(d (read-directory-name "Path to test: " default-path
+																							default-path nil))
+											(f (read-test-suite-type)))
+								 (list n d f)))
+	(when (ut-test-suite-exists-p name)
+		(error "Test suite '%s' already exists" name))
+	(push	(ht ('name name) ('test-dir test-dir) ('framework framework))
+				(gethash 'test-suites ut-conf)))
+
+(defun ut-del-test-suite (&optional name)
+	"Remote test suite NAME from the list of test suites."
+	(interactive (read-string "Test suite name: "))
+	(when (not (ut-test-suite-exists-p name))
+		(error "Test suite '%s' does not exist" name))
+	(puthash 'test-suites (--remove (string= (ut-test-suite-name it) name)
+																	(ut-test-suites))
+					 ut-conf))
+
+;; Misc
+
+(defun ut-test-suite-count ()
+	"Return the number of currently defined test suites."
+	(length (ut-test-suites)))
 
 ;; Functions to print data into the ut buffer
 
@@ -301,7 +352,7 @@ If STREAM does not exist use the default output buffer."
 		(ut-parse-conf test-conf))
 	(let ((buf (get-buffer-create ut-buffer-name)))
 		(switch-to-buffer buf)
-		(cd (get 'ut-conf 'test-dir))
+		(cd (ut-conf-test-dir))
 		(ut-mode)
 		(ut-draw-display)))
 

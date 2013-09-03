@@ -1,1 +1,1 @@
-(variable-documentation "Configuration for unit tests." project-name "Example" project-dir "~/projects/ut/tests/data/" test-dir "~/projects/ut/tests/data/" tests ([cl-struct-ut-test-suite "Bar" "data/" cppunit nil nil t nil t] [cl-struct-ut-test-suite "Foo" "data/" cppunit nil nil t nil t]))
+#s(hash-table size 65 test eql rehash-size 1.5 rehash-threshold 0.8 data (project-name "Example" project-dir "~/projects/ut/" test-dir "~/projects/ut/tests" test-suites nil))
