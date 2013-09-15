@@ -218,15 +218,31 @@ Fields:
 
 (defun ut-test-suite-name (test-suite)
 	"Return the name associated with TEST-SUITE."
-	(gethash 'name test-suite))
+	(gethash :name test-suite))
 
 (defun ut-test-suite-test-dir (test-suite)
 	"Return the test directory associated with TEST-SUITE."
-	(gethash 'test-dir test-suite))
+	(gethash :test-dir test-suite))
 
 (defun ut-test-suite-framework (test-suite)
 	"Return the framework associated with TEST-SUITE."
-	(gethash 'framework test-suite))
+	(gethash :framework test-suite))
+
+(defun ut-test-suite-build-command (test-suite)
+	"Return the build-command associated with TEST-SUITE."
+	(gethash :build-command test-suite))
+
+(defun ut-test-suite-build-filter (test-suite)
+	"Return the build-filter associated with TEST-SUITE."
+	(gethash :build-filter test-suite))
+
+(defun ut-test-suite-run-command (test-suite)
+	"Return the run-command associated with TEST-SUITE."
+	(gethash :run-command test-suite))
+
+(defun ut-test-suite-run-filter (test-suite)
+	"Return the run-filter associated with TEST-SUITE."
+	(gethash :run-filter test-suite))
 
 (defun ut-get-test-suite (name)
 	"Return test suite object with NAME."
@@ -246,21 +262,47 @@ Fields:
 				((stringp (ut-test-suite-test-dir test-suite)) nil)
 				((f-exists? (ut-test-suite-test-dir test-suite)) nil)
 				((not (memq test-suite test-frameworks)) nil)
+				((stringp (ut-test-suite-run-command test-suite)) nil)
+				((functionp (ut-test-suite-run-command test-suite)) nil)
 				(t t)))
 
 ;; mutators
 
-(defun ut-new-test-suite (&optional name test-dir framework)
-	"Add test suite NAME in TEST-DIR using FRAMEWORK for testing."
+(defun ut-new-test-suite (name test-dir framework &optional build-command
+															 build-filter run-command run-filter)
+	"Create new test suite NAME with TEST-DIR as the path to the test files.
+
+FRAMEWORK defines the default values for BUILD-COMMAND, BUILD-FILTER,
+RUN-COMMAND and RUN-FILTER, though they may be overriden."
 	(interactive (let* ((n (read-string "Test suite name: "))
-											(default-path (f-join (ut-conf-test-dir) n))
+											(default-path (f-join (ut-test-dir) n))
 											(d (read-directory-name "Path to test: " default-path
 																							default-path nil))
-											(f (read-test-suite-type)))
-								 (list n d f)))
+											(f (completing-read "Framework: "
+																					(mapcar #'(lambda (x) (symbol-name x))
+																									(ht-keys ut-frameworks)))))
+								 (list n d (intern f))))
 	(when (ut-test-suite-exists-p name)
 		(error "Test suite '%s' already exists" name))
-	(push	(ht ('name name) ('test-dir test-dir) ('framework framework))
+	(when (not (memq framework (ht-keys ut-frameworks)))
+		(error "Unknown framework '%s'" framework))
+	(push	(ht (:name name) (:test-dir test-dir) (:framework framework)
+						(:build-command
+						 (if (null build-command)
+								 (ut-framework-build-command framework name test-dir)
+							 build-command))
+						(:build-filter
+						 (if (null build-filter)
+								 (ut-framework-build-filter framework name test-dir)
+							 build-filter))
+						(:run-command
+						 (if (null run-command)
+								 (ut-framework-run-command framework name test-dir)
+							 run-command))
+						(:run-filter
+						 (if (null run-filter)
+								 (ut-framework-run-filter framework name test-dir)
+							 run-filter)))
 				(gethash 'test-suites ut-conf)))
 
 (defun ut-del-test-suite (&optional name)
@@ -277,6 +319,103 @@ Fields:
 (defun ut-test-suite-count ()
 	"Return the number of currently defined test suites."
 	(length (ut-test-suites)))
+
+;; Framework functions
+
+(defun ut-framework-build-command (framework)
+	"Return the build string associated with FRAMEWORK, nil if framework DNE."
+	(condition-case nil
+			(symbol-value (intern (format "ut-%s-build-command" framework)))
+		(error nil)))
+
+(defun ut-framework-build-hook (framework)
+	"Return the build-hook associated with FRAMEWORK, nil if framework DNE."
+	(condition-case nil
+			(symbol-value (intern (format "ut-%s-build-hook" framework)))
+		(error nil)))
+
+(defun ut-framework-run-command (framework)
+	"Return the run-command assocaited with FRAMEWORK, nil if framework DNE."
+	(condition-case nil
+			(symbol-value (intern (format "ut-%s-run-command" framework)))
+		(error nil)))
+
+(defun ut-framework-run-hook (framework)
+	"Return the run-hook associated with FRAMEWORK, nil if framework DNE."
+	(condition-case nil
+			(symbol-value (intern (format "ut-%s-run-hook" framework)))
+		(error nil)))
+
+(defmacro ut-define-framework (framework &rest properties)
+	"Define new unit testing handlers for FRAMEWORK.
+
+The new framework consists of the following PROPERTIES:
+
+BUILD-COMMAND: shell command to build the test-suite.
+BUILD-FILTER: function to be assigned to ut-%FRAMEWORK%-build-hook
+RUN-COMMAND: shell command to run the test-suite
+RUN-FILTER: function to be assigned to ut-%FRAMEWORK%-run-hook.
+
+BUILD-COMMAND and BUILD-FILTER are optional.
+
+NOTE: This macro is modeled somewhat after flycheck-define-checker over at
+https//github.com/flycheck/"
+	(declare (indent 1)
+					 (doc-string 2))
+	(let ((build-command (plist-get properties :build-command))
+				(build-filter (plist-get properties :build-filter))
+				(run-command (plist-get properties :run-command))
+				(run-filter (plist-get properties :run-filter)))
+		(unless (or (null build-command)
+								(stringp build-command)
+								(and (listp build-command)
+										 (-all? #'(lambda (x) (stringp x)) build-command)))
+			(error "Build command must either be nil, a string or a list of strings"))
+		(unless (or (null build-filter) (functionp (eval build-filter)))
+			(error "Build filter must either be nil or a function"))
+		(unless (or (stringp run-command)
+								(and (listp run-command) (-all? #'(lambda (x) (stringp x)))))
+			(error "Run command must either be nil, a string or a list of strings"))
+		(unless (functionp (eval run-filter))
+			(error "Run filter must be a function"))
+		`(progn
+			 (defcustom ,(intern (format "ut-%s-build-command" (symbol-name framework)))
+				 ,(if (stringp build-command)
+							build-command
+						(mapconcat #'identity build-command " "))
+				 "Variable to hold build command"
+				 :type 'string
+				 :group 'ut
+				 :risky t)
+			 (defcustom ,(intern (format "ut-%s-build-hook" (symbol-name framework)))
+				 ,build-filter
+				 "Hook to run when build process has been completed"
+				 :type 'hook
+				 :group 'ut
+				 :risky t)
+			 (defcustom ,(intern (format "ut-%s-run-command" (symbol-name framework)))
+				 ,(if (stringp run-command)
+							run-command
+						(mapconcat #'identity run-command " "))
+				 "Variable to hold run command"
+				 :type 'string
+				 :group 'ut
+				 :risky t)
+			 (defcustom ,(intern (format "ut-%s-run-hook" (symbol-name framework)))
+				 ,run-filter
+				 "Hook to run when the run process has been completed"
+				 :type 'hook
+				 :group 'ut
+				 :risky t))))
+
+(defun ut-frameworkp (framework)
+	"Check if FRAMEWORK exists and is defined."
+	(condition-case nil
+			(and (stringp (ut-framework-build-command framework))
+					 (functionp (ut-framework-build-hook framework))
+					 (stringp (ut-framework-run-command framework))
+					 (functionp (ut-framework-run-hook framework)))
+		(error nil)))
 
 ;; Functions to print data into the ut buffer
 

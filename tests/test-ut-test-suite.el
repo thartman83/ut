@@ -29,6 +29,7 @@
 	 (ut-new-conf ".tests" "foo" (f-expand "./") (f-expand "./"))
 	 (should (= (ut-test-suite-count) 0))
 	 (ut-new-test-suite "foo" "~/" 'cppunit)
+	 (should (ut-test-suite-p (ut-get-test-suite "foo")))
 	 (should (= (ut-test-suite-count) 1))
 	 (should (string= (ut-test-suite-name (first (ut-test-suites))) "foo"))
 	 (should (string= (ut-test-suite-test-dir (first (ut-test-suites))) "~/"))
