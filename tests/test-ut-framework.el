@@ -19,6 +19,11 @@
 
 ;;; Code:
 
+(require 'f)
+(require 'ut-framework (f-join (f-parent (f-this-file)) "../ut-framework.el"))
+(require 'test-helpers (f-join (f-parent (f-this-file)) "test-helpers.el"))
+(require 'ert)
+
 (ert-deftest test-ut-new-framework ()
 	(ut-define-framework echo
 		:build-command "echo %testname%"
@@ -28,7 +33,10 @@
 		:run-filter #'(lambda (test-suite build-output)
 										(string= (ut-test-suite-test-dir test-suite) build-output)))
 	(ut-frameworkp 'echo)
-	())
+	(should (stringp (ut-framework-build-command 'echo)))
+	(should (functionp (ut-framework-build-hook 'echo)))
+	(should (stringp (ut-framework-run-command 'echo)))
+	(should (functionp (ut-framework-run-hook 'echo))))
 
 (provide 'test-ut-framework)
 
