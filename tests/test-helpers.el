@@ -19,17 +19,46 @@
 
 ;;; Code:
 
+(require 'f)
+
 (eval-when-compile
-	(require 'cl))
+  (require 'cl))
+
+(eval-and-compile
+  (defconst ut-testsuite-dir (f-parent (f-this-file))
+    "Directory containing the testing files.")
+  (defconst ut-source-dir (f-parent (f-parent (f-this-file)))
+    "Directory containing the source files."))
+
+(require 'ut (f-join ut-testsuite-dir "../ut"))
+(require 'ert)
+
+(defvar ut-test-process-wait-time 10)
 
 (defmacro should-error (test expected)
-	"Run TEST and expect error EXPECTED."
-	(let ((err (gensym "err")))
-		`(condition-case ,err
-				 (progn
-					 ,test
-					 (should nil))
-			 (error (should (string= (error-message-string ,err) ,expected))))))
+  "Run TEST and expect error EXPECTED."
+  (let ((err (gensym "err")))
+    `(condition-case ,err
+         (progn
+           ,test
+           (should nil))
+       (error (should (string= (error-message-string ,err) ,expected))))))
+
+(defun ut-test-wait-for-process (process-name)
+  "Return when the process identified as PROCESS-NAME finishes.
+
+Code somewhat pilfered from test-helper.el from flycheck
+ (https://github.com/flycheck/flycheck)"
+  (let ((process (get-process process-name))
+        (time (float-time)))
+    (when (null process)
+      (error "Unknown process '%s'" process))
+    (while (and (null (process-get process :finished))
+                (< (- (float-time) time) ut-test-process-wait-time))
+      (sleep-for 1))
+    (unless (< (- (float-time) time) ut-test-process-wait-time)
+      (error "Process '%s' did not finish after %s seconds" process-name
+             ut-test-process-wait-time))))
 
 (provide 'test-helpers)
 

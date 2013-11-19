@@ -17,53 +17,56 @@
 
 ;;; Code:
 
-(require 'f)
+(require 'test-helpers)
 (require 'file-utils)
-(require 'test-helpers (f-join (f-parent (f-this-file)) "test-helpers.el"))
-(require 'ut (f-join (f-parent (f-this-file)) "../ut.el"))
 
 ;; test test-suite addition and removal functions
 
 (ert-deftest test-ut-new-test-suite ()
-	(with-temporary-dir
-	 (ut-new-conf ".tests" "foo" (f-expand "./") (f-expand "./"))
-	 (should (= (ut-test-suite-count) 0))
-	 (ut-new-test-suite "foo" "~/" 'cppunit)
-	 (should (ut-test-suite-p (ut-get-test-suite "foo")))
-	 (should (= (ut-test-suite-count) 1))
-	 (should (string= (ut-test-suite-name (first (ut-test-suites))) "foo"))
-	 (should (string= (ut-test-suite-test-dir (first (ut-test-suites))) "~/"))
-	 (should (equal (ut-test-suite-framework (first (ut-test-suites))) 'cppunit))))
+  (with-temporary-dir
+   (ut-new-conf ".tests" "foo" (f-expand "./") (f-expand "./"))
+   (make-directory (f-expand "./tests"))
+   (should (= (ut-test-suite-count) 0))
+   (ut-new-test-suite "foo" (f-expand "./tests/foo") 'cppunit)
+   (should (ut-test-suite-p (ut-get-test-suite "foo")))
+   (should (= (ut-test-suite-count) 1))
+   (should (string= (ut-test-suite-name (first (ut-test-suites))) "foo"))
+   (should (string= (ut-test-suite-test-dir (first (ut-test-suites)))
+                    (f-expand "./tests/foo")))
+   (should (equal (ut-test-suite-framework (first (ut-test-suites))) 'cppunit))))
 
 (ert-deftest test-ut-adding-and-deleting-suites ()
-	(with-temporary-dir
-	 (ut-new-conf ".tests" "foo" (f-expand "./") (f-expand "./"))
-	 (should (= (ut-test-suite-count) 0))
-	 (ut-new-test-suite "foo" "~/" 'cppunit)
-	 (should (= (ut-test-suite-count) 1))
-	 (ut-del-test-suite "foo")
-	 (should (= (ut-test-suite-count) 0))))
+  (with-temporary-dir
+   (ut-new-conf ".tests" "foo" (f-expand "./") (f-expand "./"))
+   (make-directory (f-expand "./tests"))
+   (should (= (ut-test-suite-count) 0))
+   (ut-new-test-suite "foo" (f-expand "./tests/foo") 'cppunit)
+   (should (= (ut-test-suite-count) 1))
+   (ut-del-test-suite "foo")
+   (should (= (ut-test-suite-count) 0))))
 
 (ert-deftest test-errors-on-add-and-del-test-suite ()
-	(with-temporary-dir
-	 (ut-new-conf ".tests" "foo" (f-expand "./") (f-expand "./"))
-	 (should (= (ut-test-suite-count) 0))
-	 (should-error (ut-del-test-suite "foo")
-								 "Test suite 'foo' does not exist")
-	 (ut-new-test-suite "foo" "~/" 'cppunit)
-	 (should-error (ut-new-test-suite "foo" "~/" 'cppunit)
-								 "Test suite 'foo' already exists")
-	 (should-error (ut-del-test-suite "bar")
-								 "Test suite 'bar' does not exist")))
+  (with-temporary-dir
+   (ut-new-conf ".tests" "foo" (f-expand "./") (f-expand "./"))
+   (make-directory (f-expand "./tests"))
+   (should (= (ut-test-suite-count) 0))
+   (should-error (ut-del-test-suite "foo")
+                 "Test suite 'foo' does not exist")
+   (ut-new-test-suite "foo" (f-expand "./tests/foo") 'cppunit)
+   (should-error (ut-new-test-suite "foo" (f-expand "./tests") 'cppunit)
+                 "Test suite 'foo' already exists")
+   (should-error (ut-del-test-suite "bar")
+                 "Test suite 'bar' does not exist")))
 
 (ert-deftest test-ut-get-test-suite ()
-	(with-temporary-dir
-	 (ut-new-conf ".tests" "foo" (f-expand "./") (f-expand "./"))
-	 (let ((suite (car (ut-new-test-suite "foo" "~/" 'cppunit))))
-		 (should (equal (ut-get-test-suite "foo") suite)))
-	 (let ((suite (car (ut-new-test-suite "bar" "~/" 'cppunit))))
-		 (should (equal (ut-get-test-suite "bar") suite)))
-	 (should-error (ut-get-test-suite "baz") "Test suite 'baz' does not exist")))
+  (with-temporary-dir
+   (ut-new-conf ".tests" "foo" (f-expand "./") (f-expand "./"))
+   (make-directory (f-expand "./tests"))
+   (let ((suite (ut-new-test-suite "foo" (f-expand "./tests/foo") 'cppunit)))
+     (should (equal (ut-get-test-suite "foo") suite)))
+   (let ((suite (ut-new-test-suite "bar" (f-expand "./tests/bar") 'cppunit)))
+     (should (equal (ut-get-test-suite "bar") suite)))
+   (should-error (ut-get-test-suite "baz") "Test suite 'baz' does not exist")))
 
 (provide 'test-ut-test-suite)
 

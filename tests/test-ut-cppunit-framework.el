@@ -17,41 +17,41 @@
 
 ;; 
 
-(require 'ert)
-(require 'ut (f-join (f-parent (f-this-file)) "../ut.el"))
-(require 'ut-cppunit-framework (f-join (f-parent (f-this-file)) "../ut-cppunit-framework.el"))
+(require 'test-helpers)
+(require 'ut-cppunit-framework (f-join ut-source-dir "ut-cppunit-framework"))
 
-(ert-deftest test-new-cppunit-test-suite ()
-	(ut-reset-conf)
-	(make-directory "fooProject")
-	(cd "fooProject")
-	(make-directory "src")
-	(make-directory "bin")
-	(f-write-text test-header 'utf-8 "src/foo.hh")
-	(f-write-text test-source 'utf-8 "src/foo.cc")
-	(make-directory "tests")
-	(ut-new-conf ".tests" "fooProject" (f-expand default-directory)
-							 (f-join (f-expand default-directory) "tests"))
-	(let ((ts (ut-new-test-suite "foo" (f-join (ut-test-dir) "fooTests") 'cppunit)))
-		(should (f-directory? (f-join (f-expand default-directory) "tests/fooTests")))
-		(cd "tests/fooTests")
-		(should (string= (ut-test-suite-build-command ts)
-										 (concat "make -C " (f-join (ut-test-dir) "fooTests"))))
-		(should (f-directory? "src"))
-		(should (f-directory? "bin"))
-		(should (f-directory? "data"))
-		(should (f-exists? "Makefile"))
-		(should (f-exists? "src/main.cc"))
-		(should (f-exists? "src/fooTests.hh"))
-		(should (f-exists? "src/fooTests.cc"))
-		(start-process-shell-command "make" nil (ut-test-suite-build-command ts))
-		(should (eq 0 (process-exit-status (get-process "make"))))))
+(ert-deftest ut-test-new-cppunit-test-suite ()
+  (ut-reset-conf)
+  (make-directory "fooProject")
+  (cd "fooProject")
+  (make-directory "src")
+  (make-directory "bin")
+  (f-write-text ut-test-cppheader 'utf-8 "src/foo.hh")
+  (f-write-text ut-test-cppsource 'utf-8 "src/foo.cc")
+  (make-directory "tests")
+  (ut-new-conf ".tests" "fooProject" (f-expand default-directory)
+               (f-join (f-expand default-directory) "tests"))
+  (let ((ts (ut-new-test-suite "foo" (f-join (ut-test-dir) "fooTests") 'cppunit)))
+    (should (f-directory? (f-join (f-expand default-directory) "tests/fooTests")))
+    (cd "tests/fooTests")
+    (should (string= (ut-test-suite-build-command ts)
+                     (concat "make -C " (f-join (ut-test-dir) "fooTests"))))
+    (should (f-directory? "src"))
+    (should (f-directory? "bin"))
+    (should (f-directory? "data"))
+    (should (f-exists? "Makefile"))
+    (should (f-exists? "src/main.cc"))
+    (should (f-exists? "src/fooTests.hh"))
+    (should (f-exists? "src/fooTests.cc"))
+    (start-process-shell-command "make" nil (ut-test-suite-build-command ts))
+    
+    (should (eq 0 (process-exit-status (get-process "make"))))))
 
-(defvar test-header (concat  "#include <string>\nclass foo {\npublic:\n\t"
-														 "foo();\n\nstd::string getFoo();\n};\n"))
+(defvar ut-test-cppheader (concat  "#include <string>\nclass foo {\npublic:\n\t"
+                                   "foo();\n\nstd::string getFoo();\n};\n"))
 
-(defvar test-source (concat  "#include \"foo.hh\"\n\nfoo::foo() {}\n\n"
-														 "std::string foo::getFoo() {return \"foo\";}"))
+(defvar ut-test-cppsource (concat  "#include \"foo.hh\"\n\nfoo::foo() {}\n\n"
+                                   "std::string foo::getFoo() {return \"foo\";}"))
 
 ;;; Code:
 
