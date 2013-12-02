@@ -19,8 +19,7 @@
 
 ;;; Code:
 
-(require 'test-helpers (f-join (f-parent (f-this-file)) "test-helpers"))
-(require 'ut-draw (f-join ut-source-dir "ut-draw"))
+(require 'test-helpers)
 
 (defmacro with-insert-as-string (&rest body)
   "Return the inserted output from BODY as a string."
@@ -29,7 +28,7 @@
      (buffer-substring (point-min) (point-max))))
 
 (ert-deftest test-ut-draw-header ()
-  (let ((conf (ht ('project-name "foo"))))
+  (let ((conf (ht (:project-name "foo"))))
     (should
      (string= (with-insert-as-string (ut-draw-header conf))
               "/--------------------\\\n| Unit Tests for foo |\n\\--------------------/\n"))))

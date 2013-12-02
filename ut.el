@@ -46,8 +46,43 @@
 (require 'f)
 (require 'ht)
 
-(require 'ut-draw)
-(require 'ut-framework)
+;; Faces
+
+(defface ut-header-face
+  `((((class color) (background dark))
+     (:foreground "blue" :bold t))
+    (((class color) (background light))
+     (:foreground "blue" :bold t))
+    (t (:bold t)))
+  "Face for test header"
+  :group 'ut)
+
+(defface ut-error-face
+  `((((class color) (background dark))
+     (:foreground "red" :bold t))
+    (((class color) (background light))
+     (:foreground "red" :bold t))
+    (t (:bold t)))
+  "Face for failed results"
+  :group 'ut)
+
+(defface ut-succeeded-face
+  `((((class color) (background dark))
+     (:foreground "yellow" :bold t))
+    (((class color) (background light))
+     (:foreground "yellow" :bold t))
+    (t (:bold t)))
+  "Face for succeeded results"
+  :group 'ut)
+
+(defface ut-skipped-face
+  `((((class color) (background dark))
+     (:foreground "cyan" :bold t))
+    (((class color) (background light))
+     (:foreground "cyan" :bold t))
+    (t (:bold t)))
+  "Face for skipped results"
+  :group 'ut)
 
 ;; Groups
 
@@ -80,16 +115,6 @@
 
 ;; Vars and consts
 
-(defvar ut-conf (make-hash-table)
-  "Dictionary of configuration variables for unit tests.
-
-Symbol -> Values:
-
-   project-name -> Project name (string)
-   project-dir -> Root directory of the project (path)
-   test-dir -> Root directory of the unit tests (path)
-   tests -> Dictionary of test suites (hash-table)")
-
 (defvar ut-frameworks nil
   "List of frameworks defined.")
 
@@ -111,25 +136,25 @@ Returns nil if the file does not exist."
   "Return project name associated with CONF.
 
 If CONF is not specified, use the variable ut-conf."
-  (gethash 'project-name (if (null conf) ut-conf conf)))
+  (gethash :project-name (if (null conf) ut-conf conf)))
 
 (defun ut-project-dir (&optional conf)
   "Return project dir associated with CONF.
 
 If CONF is not specified, use the variable ut-conf."
-  (gethash 'project-dir (if (null conf) ut-conf conf)))
+  (gethash :project-dir (if (null conf) ut-conf conf)))
 
 (defun ut-test-dir (&optional conf)
   "Return test dir associated with CONF.
 
 If CONF is not specified, use the variable ut-conf."
-  (gethash 'test-dir (if (null conf) ut-conf conf)))
+  (gethash :test-dir (if (null conf) ut-conf conf)))
 
 (defun ut-test-suites (&optional conf)
   "Return test suites associated with CONF.
 
 If CONF is not specified, use the variable ut-conf."
-  (gethash 'test-suites (if (null conf) ut-conf conf)))
+  (gethash :test-suites (if (null conf) ut-conf conf)))
 
 ;; predicates
 
@@ -155,10 +180,10 @@ Fields:
   (when (not (file-writable-p test-conf))
     (error "Could not create new test configuration file `%s'" test-conf))
   (let ((buf (generate-new-buffer test-conf)))
-    (setf ut-conf (ht ('project-name project-name)
-                      ('project-dir project-dir)
-                      ('test-dir test-dir)
-                      ('test-suites nil)))
+    (setf ut-conf (ht (:project-name project-name)
+                      (:project-dir project-dir)
+                      (:test-dir test-dir)
+                      (:test-suites nil)))
     (ut-write-conf test-conf)
     ut-conf))
 
@@ -270,7 +295,7 @@ RUN-COMMAND and RUN-FILTER, though they may be overriden."
             (if (null run-filter)
                 (ut-framework-run-hook framework)
               run-filter))
-    (push new-suite (gethash 'test-suites ut-conf))
+    (push new-suite (gethash :test-suites ut-conf))
     (funcall (ut-framework-new-test-suite-hook framework) new-suite)
     new-suite))
 
@@ -279,26 +304,9 @@ RUN-COMMAND and RUN-FILTER, though they may be overriden."
   (interactive (read-string "Test suite name: "))
   (when (not (ut-test-suite-exists-p name))
     (error "Test suite '%s' does not exist" name))
-  (puthash 'test-suites (--remove (string= (ut-test-suite-name it) name)
+  (puthash :test-suites (--remove (string= (ut-test-suite-name it) name)
                                   (ut-test-suites))
            ut-conf))
-
-;; interactive functions
-(defun ut-build-test-suite (test-suite)
-  "Start the build process for TEST-SUITE."
-  (interactive (list (completing-read "Test suite name"
-                                      (mapcar #'(lambda (x) (ut-test-suite-name x))
-                                              (ut-test-suites)))))
-  (let* ((build-command (ut-test-suite-build-command))
-        (process-name (concat "build-" (ut-test-suite-name test-suite)))
-        (process-command (ut-test-suite-build-command test-suite))
-        (process (apply #'start-process process-name *ut-buffer*
-                        process-command))
-        (process-put process :finished nil))
-    (process-put process :test-suite test-suite)
-    (set-process-filter process #'ut-build-process-filter)
-    (set-process-sentinel process #'ut-build-process-sentinel)
-    (set-process-query-on-exit-flag process nil)))
 
 ;; test-suite process functions
 
@@ -333,6 +341,211 @@ RESULT is defined as a list of (string symbol string)")
              test-suite)
     str))
 
+(defmacro ut-define-framework (framework &rest properties)
+  "Define new unit testing handlers for FRAMEWORK.
+
+The new framework consists of the following PROPERTIES:
+
+BUILD-COMMAND: shell command to build the test-suite.
+BUILD-FILTER: function to be assigned to ut-%FRAMEWORK%-build-hook
+RUN-COMMAND: shell command to run the test-suite
+RUN-FILTER: function to be assigned to ut-%FRAMEWORK%-run-hook.
+
+BUILD-COMMAND and BUILD-FILTER are optional.
+
+NOTE: This macro is modeled somewhat after flycheck-define-checker over at
+https//github.com/flycheck/"
+  (declare (indent 1)
+           (doc-string 2))
+  (let ((build-command (plist-get properties :build-command))
+        (build-filter (plist-get properties :build-filter))
+        (run-command (plist-get properties :run-command))
+        (run-filter (plist-get properties :run-filter))
+        (new-test-suite-hook (plist-get properties :new-test-suite)))
+    (unless (or (null build-command)
+                (stringp build-command)
+                (and (listp build-command)
+                     (-all? #'stringp build-command)))
+      (error "Build command must either be nil, a string or a list of strings"))
+    (unless (or (null build-filter) (functionp (eval build-filter)))
+      (error "Build filter must either be nil or a function"))
+    (unless (or (stringp run-command)
+                (and (listp run-command) (-all? #'stringp run-command)))
+      (error "Run command must either be nil, a string or a list of strings"))
+    (unless (functionp (eval run-filter))
+      (error "Run filter must be a function"))
+    (unless (or (null new-test-suite-hook)
+                (functionp (eval new-test-suite-hook)))
+      (error "New test suite hook must either be nil or a function"))
+    `(progn
+       (defcustom ,(intern (format "ut-%s-build-command" (symbol-name framework)))
+         ,(if (stringp build-command)
+              build-command
+            (mapconcat #'identity build-command " "))
+         "Variable to hold build command"
+         :type 'string
+         :group 'ut
+         :risky t)
+       (defcustom ,(intern (format "ut-%s-build-hook" (symbol-name framework)))
+         ,build-filter
+         "Hook to run when build process has been completed"
+         :type 'hook
+         :group 'ut
+         :risky t)
+       (defcustom ,(intern (format "ut-%s-run-command" (symbol-name framework)))
+         ,(if (stringp run-command)
+              run-command
+            (mapconcat #'identity run-command " "))
+         "Variable to hold run command"
+         :type 'string
+         :group 'ut
+         :risky t)
+       (defcustom ,(intern (format "ut-%s-run-hook" (symbol-name framework)))
+         ,run-filter
+         "Hook to run when the run process has been completed"
+         :type 'hook
+         :group 'ut
+         :risky t)
+       (defcustom ,(intern (format "ut-%s-new-test-suite" (symbol-name framework)))
+         ,new-test-suite-hook
+         "Hook to run when creating a new test suite"
+         :type 'hook
+         :group 'ut
+         :risky t)
+       (if (memq ',framework ut-frameworks)
+           ',framework
+         (push ',framework ut-frameworks)))))
+
+(defun ut-framework-build-command (framework)
+  "Return the build string associated with FRAMEWORK, nil if framework DNE."
+  (condition-case nil
+      (symbol-value (intern (format "ut-%s-build-command" framework)))
+    (error nil)))
+
+(defun ut-framework-build-hook (framework)
+  "Return the build-hook associated with FRAMEWORK, nil if framework DNE."
+  (condition-case nil
+      (symbol-value (intern (format "ut-%s-build-hook" framework)))
+    (error nil)))
+
+(defun ut-framework-run-command (framework)
+  "Return the run-command assocaited with FRAMEWORK, nil if framework DNE."
+  (condition-case nil
+      (symbol-value (intern (format "ut-%s-run-command" framework)))
+    (error nil)))
+
+(defun ut-framework-run-hook (framework)
+  "Return the run-hook associated with FRAMEWORK, nil if framework DNE."
+  (condition-case nil
+      (symbol-value (intern (format "ut-%s-run-hook" framework)))
+    (error nil)))
+
+(defun ut-framework-new-test-suite-hook (framework)
+  "Return the new-test-suite-hook associated with FRAMEWORK, nil if FRAMEWORK DNE."
+  (condition-case nil
+      (symbol-value (intern (format "ut-%s-new-test-suite" framework)))
+    (error nil)))
+
+(defun ut-frameworkp (framework)
+  "Check if FRAMEWORK exists and is defined."
+  (condition-case nil
+      (and (stringp (ut-framework-build-command framework))
+           (functionp (ut-framework-build-hook framework))
+           (stringp (ut-framework-run-command framework))
+           (functionp (ut-framework-run-hook framework)))
+    (error nil)))
+
+;; Drawing functions
+
+(defun ut-draw-buffer (ut-conf)
+  "Draw the complete unit testing buffer based on UT-CONF."
+  (with-current-buffer ut-buffer-name
+    (erase-buffer)
+    (ut-draw-header ut-conf)
+    (maphash #'(lambda (key test-suite) (ut-draw-test test-suite)) (ut-test-suites ut-conf))
+    (ut-draw-summary (ut-test-suites ut-conf))))
+
+(defun ut-draw-header (ut-conf)
+  "Draw the ut buffer header based on UT-CONF at point."
+  (let ((title (concat " Unit Tests for " (ut-project-name) " ")))
+    (insert (concat "/" (make-string (length title) ?-) "\\\n|" title "|\n\\"
+                    (make-string (length title) ?-) "/\n"))))
+
+(defun ut-draw-test (test summarize)
+  "Draw TEST, SUMMARIZE the test results if t.
+Display all test information if nil."
+  (insert (ut-test-suite-name test) " : "
+          (cond ((eq (ut-test-suite-result test) 'passed) "Passed")
+                ((eq (ut-test-suite-result test) 'failed) "Failed")
+                (t "Error"))
+          "\n"))
+
+(defun ut-draw-summary (test-suites)
+  "Draw the summarized results of the list of TEST-SUITES."
+  (let ((passed (count-if #'(lambda (suite) (eq (ut-test-suite-result suite) 'passed)) test-suites))
+        (failed (count-if #'(lambda (suite) (eq (ut-test-suite-result suite) 'failed)) test-suites))
+        (errored (count-if #'(lambda (suite) (eq (ut-test-suite-result suite) 'error)) test-suites)))
+    (insert (format "Total Passed: %d Total Failed: %d Total Errors: %d\n"
+                    passed failed errored))))
+
+;; Interactives
+
+(defun ut-add-test-suite (test-suite)
+  "Add TEST-SUITE as a new test suite to the ut definition."
+  (error "Not implemented"))
+
+(defun ut-delete-test-suite (test-suite)
+  "Delete TEST-SUITE from the current ut definition."
+  (error "Not implemented"))
+
+(defun ut-run-test-suite (test-suite)
+  "Run TEST-SUITE, parse the output and update the results."
+  (error "Not implemented"))
+
+(defun ut-run-all ()
+  "Run all of the test suites defined in ut definition."
+  (error "Not implemented"))
+
+(defun ut-build-test-suite (test-suite)
+  "Build TEST-SUITE, parse the output and update the compilation status.
+
+If called interactively, search for the test suite at point."
+  (interactive (lambda () (if (ut-buffer-p) (ut-get-test-suite-at-point) nil)))
+  (when (or (null test-suite) (ut-test-suite-exists-p test-suite))
+    (error "Could not find unit test suite to build"))
+  (let* ((build-command (ut-test-suite-build-command))
+        (process-name (concat "build-" (ut-test-suite-name test-suite)))
+        (process-command (ut-test-suite-build-command test-suite))
+        (process (apply #'start-process process-name (current-buffer)
+                        process-command))
+        (process-put process :finished nil))
+    (process-put process :test-suite test-suite)
+    (set-process-filter process #'ut-build-process-filter)
+    (set-process-sentinel process #'ut-build-process-sentinel)
+    (set-process-query-on-exit-flag process nil)))
+
+(defun ut-build-all ()
+  "Build all of the test suites defined in ut definition."
+  (error "Not Implemented"))
+
+(defun ut-toggle ()
+  "Toggle the narrowing/widening of the context sensitive region."
+  (error "Not Implemented"))
+
+(defun ut-quit ()
+  "Quit ut mode and kill the buffer associated with it."
+  (interactive)
+  (when (ut-buffer-p)
+    (kill-buffer)))
+
+(defun ut-debug-test-suite (test-suite)
+  "Run the debugger associated with TEST-SUITE."
+  (error "Not Implemented"))
+
+(defun ut-profile-test-suite (test-suite)
+  "Run the profiler associated with TEST-SUITE."
+  (error "Not Implemented"))
+
 ;; Main entry function and mode defuns
 
 (defun ut (test-conf)
@@ -341,31 +554,34 @@ RESULT is defined as a list of (string symbol string)")
  Reads TEST-CONF configuration file and then creates the testing
  buffer to contain the tests."
   (interactive "FUnit test configuration file: ")
-  (if (or (not (f-exists? test-conf)) (not (f-file? test-conf)))
-      (ut-new-conf test-conf)
-    (ut-parse-conf test-conf))
-  (let ((buf (get-buffer-create ut-buffer-name)))
-    (switch-to-buffer buf)
-    (cd (ut-conf-test-dir))
-    (ut-mode)
-    (ut-draw-display)))
+  (when (or (not (f-exists? test-conf)) (not (f-file? test-conf)))
+    (ut-new-conf test-conf))
+  (let* ((def (ut-parse-conf test-conf))
+         (buffer-name (ut-buffer-name def)))
+    (when (null (get-buffer buffer-name))
+      (set-buffer (get-buffer-create buffer-name))
+      (cd (ut-conf-test-dir def))
+      (setq-local ut-def def)
+      (ut-mode)
+      (ut-draw-display))
+    (switch-to-buffer buffer-name)))
 
 ;; Mode and mode map
 
 (defvar ut-mode-map
   (let ((map (make-sparse-keymap)))
     (suppress-keymap map)
+    (define-key map "a" 'ut-add-test-suite)
+    (define-key map "d" 'ut-delete-test-suite)
+    (define-key map "r" 'ut-run-test-suite)
+    (define-key map "R" 'ut-run-all)
+    (define-key map "b" 'ut-build-test-suite)
+    (define-key map "B" 'ut-build-all)
     (define-key map "t" 'ut-toggle)
     (define-key map [return] 'ut-toggle)
-    (define-key map "a" 'ut-add-test)
-    (define-key map "d" 'ut-delete)
-    (define-key map "r" 'ut-rerun)
-    (define-key map "R" 'ut-rerun-all)
-    (define-key map "c" 'ut-recompile)
-    (define-key map "C" 'ut-recompile-all)
     (define-key map "q" 'ut-quit)
-    (define-key map "d" 'ut-debug)
-    (define-key map "v" 'ut-profile)
+    (define-key map "d" 'ut-debug-test-suite)
+    (define-key map "v" 'ut-profile-test-suite)
     map)
   "Keymap for ut-mode.")
 
@@ -379,7 +595,7 @@ RESULT is defined as a list of (string symbol string)")
 (provide 'ut)
 
 ;; Local Variables:
-;; byte-compile-warnings: (not cl-functions)
+;; byte-build-warnings: (not cl-functions)
 ;; End:
 
 ;;; ut.el ends here

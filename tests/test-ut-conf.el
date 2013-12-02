@@ -19,6 +19,7 @@
 
 ;;; Code:
 
+;(require 'test-helpers (f-join (f-parent (f-this-file)) "test-helpers"))
 (require 'test-helpers)
 
 (ert-deftest test-ut-new-conf ()
@@ -49,10 +50,10 @@
   (with-temporary-dir
    (let ((test-conf (make-hash-table)))
      (f-mkdir "tests")
-     (puthash 'project-name "TestProject" ut-conf)
-     (puthash 'project-dir (f-expand "./") ut-conf)
-     (puthash 'test-dir (f-expand "./tests") ut-conf)
-     (puthash 'test-suites nil ut-conf)
+     (puthash :project-name "TestProject" ut-conf)
+     (puthash :project-dir (f-expand "./") ut-conf)
+     (puthash :test-dir (f-expand "./tests") ut-conf)
+     (puthash :test-suites nil ut-conf)
      (ut-write-conf (f-expand ".tests"))
      (ut-reset-conf)
      (ut-parse-conf ".tests")

@@ -20,7 +20,7 @@
 ;;; Code:
 
 (require 'test-helpers)
-(require 'ut-framework (f-join ut-source-dir "ut-framework"))
+(require 'ut (f-join ut-source-dir "ut"))
 
 (ert-deftest test-ut-new-framework ()
   (ut-define-framework echo
