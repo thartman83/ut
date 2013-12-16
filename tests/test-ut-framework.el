@@ -22,19 +22,81 @@
 (require 'test-helpers)
 (require 'ut (f-join ut-source-dir "ut"))
 
+(defun ut-echo-build-filter (test-suite build-output)
+  "Test TEST-SUITE BUILD-OUTPUT."
+  (if (string= (ut-test-suite-name test-suite) (first build-output))
+      "PASSED"
+    "FAILED"))
+
+(defun ut-echo-run-filter (test-suite run-output)
+  "Test TEST-SUITE RUN-OUTPUT."
+  (string= (ut-test-suite-test-dir test-suite) build-output))
+
+(defun ut-echo-new-test-suite (test-suite)
+  (save-current-directory
+   (cd (ut-test-suite-test-dir test-suite))
+   (make-directory "tests")))
+
 (ert-deftest test-ut-new-framework ()
   (ut-define-framework echo
-    :build-command "echo %testname%"
-    :build-filter #'(lambda (test-suite build-output)
-                      (string= (ut-test-suite-name test-suite) build-output))
-    :run-command "echo %testdir%"
-    :run-filter #'(lambda (test-suite build-output)
-                    (string= (ut-test-suite-test-dir test-suite) build-output)))
+    :build-command "echo -n %test-name%"
+    :build-filter #'ut-echo-build-filter
+    :run-command "echo -n %test-dir%"
+    :run-filter #'ut-echo-run-filter
+    :new-test-suite #'ut-echo-new-test-suite)
   (ut-frameworkp 'echo)
   (should (stringp (ut-framework-build-command 'echo)))
-  (should (functionp (ut-framework-build-hook 'echo)))
+  (should (functionp (ut-framework-build-filter 'echo)))
   (should (stringp (ut-framework-run-command 'echo)))
-  (should (functionp (ut-framework-run-hook 'echo))))
+  (should (functionp (ut-framework-run-filter 'echo)))
+  (should (or (null (ut-framework-new-test-suite-hook 'echo))
+              (functionp (ut-framework-new-test-suite-hook 'echo))))
+  (with-temp-buffer
+    (with-temporary-dir
+     (set (make-local-variable 'ut-conf) (ht-create))
+     (let ((suite (ut-new-test-suite "echo1" default-directory 'echo)))
+       (should (string= (ut-test-suite-build-command suite) "echo -n echo1"))
+       (should (string= (ut-test-suite-run-command suite) (concat "echo -n " default-directory)))
+       (should (f-exists? (f-join default-directory "tests")))
+       (ut-build-test-suite suite)
+       (ut-test-wait-for-process "build-echo1")
+       (should (string= (ut-test-suite-build-status suite) "PASSED"))))))
+
+(ert-deftest test-ut-undef-framework ()
+  (ut-define-framework echo
+    :build-command "echo %test-name%"
+    :build-filter #'(lambda (test-suite build-output)
+                      (string= (ut-test-suite-name test-suite) build-output))
+    :run-command "echo %test-dir%"
+    :run-filter #'(lambda (test-suite build-output)
+                    (string= (ut-test-suite-test-dir test-suite) build-output)))
+  (should (boundp 'ut-echo-build-command))
+  (should (boundp 'ut-echo-run-command))
+  (should (boundp 'ut-echo-build-filter))
+  (should (boundp 'ut-echo-run-filter))
+  (ut-undef-framework 'echo)
+  (should (not (boundp 'ut-echo-build-command)))
+  (should (not (boundp 'ut-echo-run-command)))
+  (should (not (boundp 'ut-echo-build-filter)))
+  (should (not (boundp 'ut-echo-run-filter))))
+
+(ert-deftest test-redefine-framework ()
+  (ut-define-framework echo
+    :build-command "echo -n %testname%"
+    :build-filter #'(lambda (test-suite build-output)
+                      (string= (ut-test-suite-name test-suite) build-output))
+    :run-command "echo -n %testdir%"
+    :run-filter #'(lambda (test-suite build-output)
+                    (string= (ut-test-suite-test-dir test-suite) build-output)))
+  (ut-define-framework echo
+    :build-command "echo -n %test-name%"
+    :build-filter #'(lambda (test-suite build-output)
+                      (string= (ut-test-suite-name test-suite) build-output))
+    :run-command "echo -n %test-dir%"
+    :run-filter #'(lambda (test-suite build-output)
+                    (string= (ut-test-suite-test-dir test-suite) build-output)))
+  (should (string= ut-echo-build-command "echo -n %test-name%"))
+  (should (string= ut-echo-run-command "echo -n %test-dir%")))
 
 (provide 'test-ut-framework)
 

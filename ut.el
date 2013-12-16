@@ -208,7 +208,7 @@ Fields:
 
 (defun ut-test-suite-name (test-suite)
   "Return the name associated with TEST-SUITE."
-  (gethash :name test-suite))
+  (gethash :test-name test-suite))
 
 (defun ut-test-suite-test-dir (test-suite)
   "Return the test directory associated with TEST-SUITE."
@@ -225,6 +225,10 @@ Fields:
 (defun ut-test-suite-build-filter (test-suite)
   "Return the build-filter associated with TEST-SUITE."
   (gethash :build-filter test-suite))
+
+(defun ut-test-suite-build-status (test-suite)
+  "Return the build-status associated with TEST-SUITE."
+  (ht-get test-suite :build-status "NOT BUILT"))
 
 (defun ut-test-suite-run-command (test-suite)
   "Return the run-command associated with TEST-SUITE."
@@ -278,25 +282,26 @@ RUN-COMMAND and RUN-FILTER, though they may be overriden."
     (error "Test suite '%s' already exists" name))
   (when (not (memq framework ut-frameworks))
     (error "Unknown framework '%s'" framework))
-  (let ((new-suite (ht (:name name) (:test-dir test-dir) (:framework framework))))
+  (let ((new-suite (ht (:test-name name) (:test-dir test-dir) (:framework framework))))
     (ht-set new-suite :build-command
             (if (null build-command)
-                (ut-format (ut-framework-build-command framework) new-suite)
+                (format-hash (ut-framework-build-command framework) new-suite)
               build-command))
     (ht-set new-suite :build-filter
             (if (null build-filter)
-                (ut-framework-build-hook framework)
+                (ut-framework-build-filter framework)
               build-filter))
     (ht-set new-suite :run-command
             (if (null run-command)
-                (ut-format (ut-framework-run-command framework) new-suite)
+                (format-hash (ut-framework-run-command framework) new-suite)
               run-command))
     (ht-set new-suite :run-filter
             (if (null run-filter)
-                (ut-framework-run-hook framework)
+                (ut-framework-run-filter framework)
               run-filter))
     (push new-suite (gethash :test-suites ut-conf))
-    (funcall (ut-framework-new-test-suite-hook framework) new-suite)
+    (when (not (null (ut-framework-new-test-suite-hook framework)))
+      (funcall (ut-framework-new-test-suite-hook framework) new-suite))
     new-suite))
 
 (defun ut-del-test-suite (&optional name)
@@ -312,14 +317,17 @@ RUN-COMMAND and RUN-FILTER, though they may be overriden."
 
 (defun ut-build-process-filter (process output)
   "Handle PROCESS OUTPUT."
-  (process-put process 'build-output
-               (cons output (process-get process 'build-output))))
+  (process-put process :build-output
+               (cons output (process-get process :build-output))))
 
 (defun ut-build-process-sentinel (process event)
   "Handle PROCESS EVENT."
   (when (memq (process-status process) '(signal exit))
-    (let ((build-output (process-get :build-output process))
-          (build-exit-status (process-exit-status ))))))
+    (let ((build-output (process-get process :build-output))
+          (build-exit-status (process-exit-status process))
+          (suite (process-get process :test-suite)))
+      (process-put process :finished t)
+      (ht-set suite :build-status (funcall (ut-test-suite-build-filter suite) suite build-output)))))
 
 ;; Misc
 
@@ -347,9 +355,9 @@ RESULT is defined as a list of (string symbol string)")
 The new framework consists of the following PROPERTIES:
 
 BUILD-COMMAND: shell command to build the test-suite.
-BUILD-FILTER: function to be assigned to ut-%FRAMEWORK%-build-hook
+BUILD-FILTER: function to be assigned to ut-%FRAMEWORK%-build-filter
 RUN-COMMAND: shell command to run the test-suite
-RUN-FILTER: function to be assigned to ut-%FRAMEWORK%-run-hook.
+RUN-FILTER: function to be assigned to ut-%FRAMEWORK%-run-filter.
 
 BUILD-COMMAND and BUILD-FILTER are optional.
 
@@ -378,6 +386,7 @@ https//github.com/flycheck/"
                 (functionp (eval new-test-suite-hook)))
       (error "New test suite hook must either be nil or a function"))
     `(progn
+       (ut-undef-framework ',framework)
        (defcustom ,(intern (format "ut-%s-build-command" (symbol-name framework)))
          ,(if (stringp build-command)
               build-command
@@ -386,7 +395,7 @@ https//github.com/flycheck/"
          :type 'string
          :group 'ut
          :risky t)
-       (defcustom ,(intern (format "ut-%s-build-hook" (symbol-name framework)))
+       (defcustom ,(intern (format "ut-%s-build-filter" (symbol-name framework)))
          ,build-filter
          "Hook to run when build process has been completed"
          :type 'hook
@@ -400,13 +409,13 @@ https//github.com/flycheck/"
          :type 'string
          :group 'ut
          :risky t)
-       (defcustom ,(intern (format "ut-%s-run-hook" (symbol-name framework)))
+       (defcustom ,(intern (format "ut-%s-run-filter" (symbol-name framework)))
          ,run-filter
          "Hook to run when the run process has been completed"
          :type 'hook
          :group 'ut
          :risky t)
-       (defcustom ,(intern (format "ut-%s-new-test-suite" (symbol-name framework)))
+       (defcustom ,(intern (format "ut-%s-new-test-suite-hook" (symbol-name framework)))
          ,new-test-suite-hook
          "Hook to run when creating a new test suite"
          :type 'hook
@@ -416,16 +425,26 @@ https//github.com/flycheck/"
            ',framework
          (push ',framework ut-frameworks)))))
 
+(defun ut-undef-framework (framework)
+  "Undefine custom FRAMEWORK hook variables and remove from ut-frameworks."
+  (when (ut-frameworkp framework)
+    (let ((framework-str (symbol-name framework)))
+      (makunbound (intern (format "ut-%s-build-command" framework-str)))
+      (makunbound (intern (format "ut-%s-build-filter" framework-str)))
+      (makunbound (intern (format "ut-%s-run-command" framework-str)))
+      (makunbound (intern (format "ut-%s-run-filter" framework-str)))
+      (setf ut-frameworks (remove framework ut-frameworks)))))
+
 (defun ut-framework-build-command (framework)
   "Return the build string associated with FRAMEWORK, nil if framework DNE."
   (condition-case nil
       (symbol-value (intern (format "ut-%s-build-command" framework)))
     (error nil)))
 
-(defun ut-framework-build-hook (framework)
-  "Return the build-hook associated with FRAMEWORK, nil if framework DNE."
+(defun ut-framework-build-filter (framework)
+  "Return the build-filter associated with FRAMEWORK, nil if framework DNE."
   (condition-case nil
-      (symbol-value (intern (format "ut-%s-build-hook" framework)))
+      (symbol-value (intern (format "ut-%s-build-filter" framework)))
     (error nil)))
 
 (defun ut-framework-run-command (framework)
@@ -434,25 +453,25 @@ https//github.com/flycheck/"
       (symbol-value (intern (format "ut-%s-run-command" framework)))
     (error nil)))
 
-(defun ut-framework-run-hook (framework)
-  "Return the run-hook associated with FRAMEWORK, nil if framework DNE."
+(defun ut-framework-run-filter (framework)
+  "Return the run-filter associated with FRAMEWORK, nil if framework DNE."
   (condition-case nil
-      (symbol-value (intern (format "ut-%s-run-hook" framework)))
+      (symbol-value (intern (format "ut-%s-run-filter" framework)))
     (error nil)))
 
 (defun ut-framework-new-test-suite-hook (framework)
   "Return the new-test-suite-hook associated with FRAMEWORK, nil if FRAMEWORK DNE."
   (condition-case nil
-      (symbol-value (intern (format "ut-%s-new-test-suite" framework)))
+      (symbol-value (intern (format "ut-%s-new-test-suite-hook" framework)))
     (error nil)))
 
 (defun ut-frameworkp (framework)
   "Check if FRAMEWORK exists and is defined."
   (condition-case nil
       (and (stringp (ut-framework-build-command framework))
-           (functionp (ut-framework-build-hook framework))
+           (functionp (ut-framework-build-filter framework))
            (stringp (ut-framework-run-command framework))
-           (functionp (ut-framework-run-hook framework)))
+           (functionp (ut-framework-run-filter framework)))
     (error nil)))
 
 ;; Drawing functions
@@ -511,14 +530,14 @@ Display all test information if nil."
 
 If called interactively, search for the test suite at point."
   (interactive (lambda () (if (ut-buffer-p) (ut-get-test-suite-at-point) nil)))
-  (when (or (null test-suite) (ut-test-suite-exists-p test-suite))
+  (when (or (null test-suite) (not (ut-test-suite-exists-p (ut-test-suite-name test-suite))))
     (error "Could not find unit test suite to build"))
-  (let* ((build-command (ut-test-suite-build-command))
-        (process-name (concat "build-" (ut-test-suite-name test-suite)))
-        (process-command (ut-test-suite-build-command test-suite))
-        (process (apply #'start-process process-name (current-buffer)
-                        process-command))
-        (process-put process :finished nil))
+  (let* ((process-name (concat "build-" (ut-test-suite-name test-suite)))
+         (process-command (split-string (ut-test-suite-build-command test-suite) " "))
+         (process (apply #'start-process (append (list process-name (current-buffer)
+                                                       (car process-command))
+                                                 (rest process-command)))))
+    (process-put process :finished nil)
     (process-put process :test-suite test-suite)
     (set-process-filter process #'ut-build-process-filter)
     (set-process-sentinel process #'ut-build-process-sentinel)

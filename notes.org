@@ -1,0 +1,6 @@
+* framework
+** frameworks require a testsuite for variable subsitution, tests need to reflect that
+** process-command is kind of squirrely. It will merge a command string list and then split it again
+** check that the process is set to the right buffer currently it is set to (current-buffer)
+** process-filters second arguement is a list of strings
+** pass process-status to build and run filters
