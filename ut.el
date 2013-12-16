@@ -327,7 +327,8 @@ RUN-COMMAND and RUN-FILTER, though they may be overriden."
           (build-exit-status (process-exit-status process))
           (suite (process-get process :test-suite)))
       (process-put process :finished t)
-      (ht-set suite :build-status (funcall (ut-test-suite-build-filter suite) suite build-output)))))
+      (ht-set suite :build-status (funcall (ut-test-suite-build-filter suite)
+                                           suite build-exit-status build-output)))))
 
 (defun ut-run-process-filter (process output)
   "Handle run PROCESS OUTPUT."
@@ -341,7 +342,8 @@ RUN-COMMAND and RUN-FILTER, though they may be overriden."
           (run-exit-status (process-exit-status process))
           (suite (process-get process :test-suite)))
       (process-put process :finished t)
-      (ht-set suite :run-status (funcall (ut-test-suite-run-filter suite) suite run-output)))))
+      (ht-set suite :run-status (funcall (ut-test-suite-run-filter suite)
+                                         suite run-exit-status run-output)))))
 
 ;; Misc
 

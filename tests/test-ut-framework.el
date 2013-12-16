@@ -22,14 +22,14 @@
 (require 'test-helpers)
 (require 'ut (f-join ut-source-dir "ut"))
 
-(defun ut-echo-build-filter (test-suite build-output)
-  "Test TEST-SUITE BUILD-OUTPUT."
+(defun ut-echo-build-filter (test-suite build-exit-status build-output)
+  "Test TEST-SUITE BUILD-EXIT-STATUS BUILD-OUTPUT."
   (if (string= (ut-test-suite-name test-suite) (first build-output))
       'built
     'build-error))
 
-(defun ut-echo-run-filter (test-suite run-output)
-  "Test TEST-SUITE RUN-OUTPUT."
+(defun ut-echo-run-filter (test-suite run-exit-status run-output)
+  "Test TEST-SUITE RUN-EXIT-STATUS RUN-OUTPUT."
   (if (string= (ut-test-suite-test-dir test-suite) (first run-output))
       'passed
     'failed))
