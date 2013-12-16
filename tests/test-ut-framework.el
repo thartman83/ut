@@ -25,14 +25,17 @@
 (defun ut-echo-build-filter (test-suite build-output)
   "Test TEST-SUITE BUILD-OUTPUT."
   (if (string= (ut-test-suite-name test-suite) (first build-output))
-      "PASSED"
-    "FAILED"))
+      'built
+    'build-error))
 
 (defun ut-echo-run-filter (test-suite run-output)
   "Test TEST-SUITE RUN-OUTPUT."
-  (string= (ut-test-suite-test-dir test-suite) build-output))
+  (if (string= (ut-test-suite-test-dir test-suite) (first run-output))
+      'passed
+    'failed))
 
 (defun ut-echo-new-test-suite (test-suite)
+  "Post new TEST-SUITE hook."
   (save-current-directory
    (cd (ut-test-suite-test-dir test-suite))
    (make-directory "tests")))
@@ -60,7 +63,10 @@
        (should (f-exists? (f-join default-directory "tests")))
        (ut-build-test-suite suite)
        (ut-test-wait-for-process "build-echo1")
-       (should (string= (ut-test-suite-build-status suite) "PASSED"))))))
+       (should (eq (ut-test-suite-build-status suite) 'built))
+       (ut-run-test-suite suite)
+       (ut-test-wait-for-process "run-echo1")
+       (should (eq (ut-test-suite-run-status suite) 'passed))))))
 
 (ert-deftest test-ut-undef-framework ()
   (ut-define-framework echo

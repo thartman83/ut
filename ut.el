@@ -228,7 +228,7 @@ Fields:
 
 (defun ut-test-suite-build-status (test-suite)
   "Return the build-status associated with TEST-SUITE."
-  (ht-get test-suite :build-status "NOT BUILT"))
+  (ht-get test-suite :build-status 'not-built))
 
 (defun ut-test-suite-run-command (test-suite)
   "Return the run-command associated with TEST-SUITE."
@@ -236,11 +236,11 @@ Fields:
 
 (defun ut-test-suite-run-filter (test-suite)
   "Return the run-filter associated with TEST-SUITE."
-  (gethash :run-filter test-suite))
+  (gethash :run-filter test-suite 'not-run))
 
-(defun ut-test-suite-result (test-suite)
+(defun ut-test-suite-run-status (test-suite)
   "Return the result from the last time the TEST-SUITE was run."
-  (gethash :result test-suite))
+  (gethash :run-status test-suite))
 
 (defun ut-get-test-suite (name)
   "Return test suite object with NAME."
@@ -316,18 +316,32 @@ RUN-COMMAND and RUN-FILTER, though they may be overriden."
 ;; test-suite process functions
 
 (defun ut-build-process-filter (process output)
-  "Handle PROCESS OUTPUT."
+  "Handle build PROCESS OUTPUT."
   (process-put process :build-output
                (cons output (process-get process :build-output))))
 
 (defun ut-build-process-sentinel (process event)
-  "Handle PROCESS EVENT."
+  "Handle build PROCESS EVENT."
   (when (memq (process-status process) '(signal exit))
     (let ((build-output (process-get process :build-output))
           (build-exit-status (process-exit-status process))
           (suite (process-get process :test-suite)))
       (process-put process :finished t)
       (ht-set suite :build-status (funcall (ut-test-suite-build-filter suite) suite build-output)))))
+
+(defun ut-run-process-filter (process output)
+  "Handle run PROCESS OUTPUT."
+  (process-put process :run-output
+               (cons output (process-get process :run-output))))
+
+(defun ut-run-process-sentinel (process event)
+  "Handle run PROCESS EVENT."
+  (when (memq (process-status process) '(signal exit))
+    (let ((run-output (process-get process :run-output))
+          (run-exit-status (process-exit-status process))
+          (suite (process-get process :test-suite)))
+      (process-put process :finished t)
+      (ht-set suite :run-status (funcall (ut-test-suite-run-filter suite) suite run-output)))))
 
 ;; Misc
 
@@ -519,7 +533,19 @@ Display all test information if nil."
 
 (defun ut-run-test-suite (test-suite)
   "Run TEST-SUITE, parse the output and update the results."
-  (error "Not implemented"))
+  (interactive (lambda () (if (ut-buffer-p) (ut-get-test-suite-at-point) nil)))
+  (when (or (null test-suite) (not (ut-test-suite-exists-p (ut-test-suite-name test-suite))))
+    (error "Could not find test suite '%s' to run" (ut-test-suite-name test-suite)))
+  (let* ((process-name (concat "run-" (ut-test-suite-name test-suite)))
+         (process-command (split-string (ut-test-suite-run-command test-suite) " "))
+         (process (apply #'start-process (append (list process-name (current-buffer)
+                                                       (car process-command))
+                                                 (rest process-command)))))
+    (process-put process :finished nil)
+    (process-put process :test-suite test-suite)
+    (set-process-filter process #'ut-run-process-filter)
+    (set-process-sentinel process #'ut-run-process-sentinel)
+    (set-process-query-on-exit-flag process nil)))
 
 (defun ut-run-all ()
   "Run all of the test suites defined in ut definition."
@@ -531,7 +557,7 @@ Display all test information if nil."
 If called interactively, search for the test suite at point."
   (interactive (lambda () (if (ut-buffer-p) (ut-get-test-suite-at-point) nil)))
   (when (or (null test-suite) (not (ut-test-suite-exists-p (ut-test-suite-name test-suite))))
-    (error "Could not find unit test suite to build"))
+    (error "Could not find test suite '%s' to run" (ut-test-suite-name test-suite)))
   (let* ((process-name (concat "build-" (ut-test-suite-name test-suite)))
          (process-command (split-string (ut-test-suite-build-command test-suite) " "))
          (process (apply #'start-process (append (list process-name (current-buffer)
