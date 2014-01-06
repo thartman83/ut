@@ -4,3 +4,82 @@
 ** check that the process is set to the right buffer currently it is set to (current-buffer)
 ** process-filters second arguement is a list of strings
 ** pass process-status to build and run filters
+** Framework should probably be set at the ut-conf level not at the individual test-suite level
+* General
+** Model
+*** project
+    :PROPERTIES:
+    :type:     Hash table
+    :description: Definition of a projects testing environment
+    :END:
+**** project-name
+     :PROPERTIES:
+     :type:     path
+     :description: Name of the project
+     :END:
+**** project-dir
+     :PROPERTIES:
+     :description: Path to the root of the project
+     :type:     path
+     :END:
+**** project-test-dir
+     :PROPERTIES:
+     :type:     path
+     :description: Path to the root where test-suites are defined
+     :END:
+**** project-test-suites
+     :PROPERTIES:
+     :type:     list
+     :description: List of test-suites definitions (see below for definition of test-suite)
+     :END: 
+**** project-framework
+     :PROPERTIES:
+     :type:     symbol
+     :description: Framework for the testing environment (see ut-framework for more information)
+     :END:
+*** test-suite
+    :PROPERTIES:
+    :type:     Hash Table
+    :description: Definition of a test-suite within a project
+    :END:
+**** test-suite-name  
+     :PROPERTIES:
+     :type:     string
+     :description: Name of the test-suite
+     :END:
+**** test-suite-test-dir
+     :PROPERTIES:
+     :type:     path
+     :description: Path to the root of where the test-suite is defined, relative to the project-test-dir (see project-test-dir for more information)
+     :END:
+**** test-suite-framework
+     :PROPERTIES:
+     :type:     symbol
+     :description: Testing framework for the test-suite, inherited from project (see ut-framework for more information)
+     :END:
+**** test-suite-build-command
+     :PROPERTIES:
+     :type:     string/function/nil
+     :description: Command to build test-suite. If test-suite-build-command is a string or list of strings it is a shell command. If it is a function it is the function that will build the test. If nil there is no need to build the test-suite.
+     :END:
+**** test-suite-build-filter
+**** test-suite-build-status
+**** test-suite-run-filter
+**** test-suite-run-status
+**** test-suite-result
+*** test
+    :PROPERTIES:
+    :type:     list
+    :description: Definition of a test within a test-suite
+    :END:
+**** test-name
+**** test-last-result
+**** test-last-file
+**** test-last-line-number
+**** test-last-message
+*** framework
+    :PROPERTIES:
+    :description: Definition of how tests are performed in a given type of testing harness
+    :END:
+* Random
+** %project-dir% is not being expanded because it isn't part of the test-suite hashtable

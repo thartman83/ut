@@ -34,11 +34,16 @@
       'passed
     'failed))
 
+(defun ut-echo-new-project (ut-conf)
+  "Project new project hook"
+  (save-current-directory
+   (cd (ut-test-suite-project-dir ut-conf))
+   (make-directory "tests")))
+
 (defun ut-echo-new-test-suite (test-suite)
   "Post new TEST-SUITE hook."
   (save-current-directory
-   (cd (ut-test-suite-test-dir test-suite))
-   (make-directory "tests")))
+   (make-directory (ut-test-suite-test-dir test-suite))))
 
 (ert-deftest test-ut-new-framework ()
   (ut-define-framework echo
@@ -52,15 +57,15 @@
   (should (functionp (ut-framework-build-filter 'echo)))
   (should (stringp (ut-framework-run-command 'echo)))
   (should (functionp (ut-framework-run-filter 'echo)))
-  (should (or (null (ut-framework-new-test-suite-hook 'echo))
-              (functionp (ut-framework-new-test-suite-hook 'echo))))
+  (should (and (ut-framework-new-test-suite-hook 'echo)
+               (functionp (ut-framework-new-test-suite-hook 'echo))))
   (with-temp-buffer
     (with-temporary-dir
      (set (make-local-variable 'ut-conf) (ht-create))
-     (let ((suite (ut-new-test-suite "echo1" default-directory 'echo)))
+     (let ((suite (ut-new-test-suite "echo1" (f-expand (f-join default-directory "echo1")) 'echo)))
        (should (string= (ut-test-suite-build-command suite) "echo -n echo1"))
-       (should (string= (ut-test-suite-run-command suite) (concat "echo -n " default-directory)))
-       (should (f-exists? (f-join default-directory "tests")))
+       (should (string= (ut-test-suite-run-command suite) (concat "echo -n " (ut-test-suite-test-dir suite))))
+       (should (f-exists? (ut-test-suite-test-dir suite)))
        (ut-build-test-suite suite)
        (ut-test-wait-for-process "build-echo1")
        (should (eq (ut-test-suite-build-status suite) 'built))
@@ -78,13 +83,13 @@
                     (string= (ut-test-suite-test-dir test-suite) build-output)))
   (should (boundp 'ut-echo-build-command))
   (should (boundp 'ut-echo-run-command))
-  (should (boundp 'ut-echo-build-filter))
-  (should (boundp 'ut-echo-run-filter))
+  (should (boundp 'ut-echo-build-filter-hook))
+  (should (boundp 'ut-echo-run-filter-hook))
   (ut-undef-framework 'echo)
   (should (not (boundp 'ut-echo-build-command)))
   (should (not (boundp 'ut-echo-run-command)))
-  (should (not (boundp 'ut-echo-build-filter)))
-  (should (not (boundp 'ut-echo-run-filter))))
+  (should (not (boundp 'ut-echo-build-filter-hook)))
+  (should (not (boundp 'ut-echo-run-filter-hook))))
 
 (ert-deftest test-redefine-framework ()
   (ut-define-framework echo

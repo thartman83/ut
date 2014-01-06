@@ -63,7 +63,7 @@
     (((class color) (background light))
      (:foreground "red" :bold t))
     (t (:bold t)))
-  "Face for failed results"
+  "Face for failed result"
   :group 'ut)
 
 (defface ut-succeeded-face
@@ -72,7 +72,7 @@
     (((class color) (background light))
      (:foreground "yellow" :bold t))
     (t (:bold t)))
-  "Face for succeeded results"
+  "Face for succeeded result"
   :group 'ut)
 
 (defface ut-skipped-face
@@ -81,7 +81,7 @@
     (((class color) (background light))
      (:foreground "cyan" :bold t))
     (t (:bold t)))
-  "Face for skipped results"
+  "Face for skipped result"
   :group 'ut)
 
 ;; Groups
@@ -156,6 +156,12 @@ If CONF is not specified, use the variable ut-conf."
 If CONF is not specified, use the variable ut-conf."
   (gethash :test-suites (if (null conf) ut-conf conf)))
 
+(defun ut-project-framework (&optional conf)
+  "Return the framework associated with CONF.
+
+If CONF is not specified use the local buffer variable ut-conf."
+  (gethash :framework (if (null conf) ut-conf conf)))
+
 ;; predicates
 
 (defun ut-conf-p (conf)
@@ -169,22 +175,31 @@ If CONF is not specified, use the variable ut-conf."
 
 ;; creation and manipulation
 
-(defun ut-new-conf (&optional test-conf project-name project-dir test-dir)
+(defun ut-new-conf (&optional test-conf project-name project-dir test-dir framework)
   "Interactively ask user for the fields to fill TEST-CONF with.
 
 Fields:
        PROJECT-NAME: name of the project to tests
        PROJECT-DIR: root directory of the project
-       TEST-DIR: root directory for the testing code"
-  (interactive "FConfiguration file: \nsProject name: \nDProject Directory: \nDTest Directory: ")
+       TEST-DIR: root directory for the testing code
+       FRAMEWORK: general testing framework for the project"
+  (interactive (let* ((c (read-file-name "Configuration file: " (f-join default-directory ".tests")))
+                      (p (read-string "Project name: "))
+                      (d (read-directory-name "Project directory: " default-directory))
+                      (t (read-directory-name "Test directory: " (f-join default-directory "tests")))
+                      (f (completing-read "Framework: " ut-frameworks)))
+                 (list c p d t f)))
   (when (not (file-writable-p test-conf))
     (error "Could not create new test configuration file `%s'" test-conf))
   (let ((buf (generate-new-buffer test-conf)))
     (setf ut-conf (ht (:project-name project-name)
                       (:project-dir project-dir)
                       (:test-dir test-dir)
+                      (:framework framework)
                       (:test-suites nil)))
     (ut-write-conf test-conf)
+    (when (not (null (ut-framework-new-project-hook framework)))
+      (funcall (ut-framework-new-project-hook framework) ut-conf))
     ut-conf))
 
 (defun ut-parse-conf (test-conf-file)
@@ -239,8 +254,24 @@ Fields:
   (gethash :run-filter test-suite 'not-run))
 
 (defun ut-test-suite-run-status (test-suite)
-  "Return the result from the last time the TEST-SUITE was run."
+  "Return the return value from the last time the TEST-SUITE was run."
   (gethash :run-status test-suite))
+
+(defun ut-test-suite-result (test-suite)
+  "Return the result from the last time TEST-SUITE was run."
+  (gethash :result test-suite))
+
+(defun ut-test-suite-result-summary (test-suite)
+  "Return the summary result of the last run of TEST-SUITE.
+
+If any tests within TEST-SUITE fail, the summary result is 'failed.
+If any tests within TEST-SUITE error, the summary result is 'error.
+If all tests pass within TEST-SUITE, the summary result is 'passed."
+  (let ((results (mapcar #'(lambda (test) (second test))
+                         (ut-test-suite-result test-suite))))
+    (cond ((member 'failed results) 'failed)
+          ((member 'error results) 'error)
+          (t 'passed))))
 
 (defun ut-get-test-suite (name)
   "Return test suite object with NAME."
@@ -365,6 +396,8 @@ RESULT is defined as a list of (string symbol string)")
              test-suite)
     str))
 
+;; Framework Functions and Macro
+
 (defmacro ut-define-framework (framework &rest properties)
   "Define new unit testing handlers for FRAMEWORK.
 
@@ -385,22 +418,26 @@ https//github.com/flycheck/"
         (build-filter (plist-get properties :build-filter))
         (run-command (plist-get properties :run-command))
         (run-filter (plist-get properties :run-filter))
-        (new-test-suite-hook (plist-get properties :new-test-suite)))
-    (unless (or (null build-command)
-                (stringp build-command)
-                (and (listp build-command)
-                     (-all? #'stringp build-command)))
-      (error "Build command must either be nil, a string or a list of strings"))
-    (unless (or (null build-filter) (functionp (eval build-filter)))
-      (error "Build filter must either be nil or a function"))
-    (unless (or (stringp run-command)
-                (and (listp run-command) (-all? #'stringp run-command)))
-      (error "Run command must either be nil, a string or a list of strings"))
-    (unless (functionp (eval run-filter))
-      (error "Run filter must be a function"))
-    (unless (or (null new-test-suite-hook)
-                (functionp (eval new-test-suite-hook)))
-      (error "New test suite hook must either be nil or a function"))
+        (new-test-suite-hook (plist-get properties :new-test-suite))
+        (new-project-hook (plist-get properties :new-project)))
+    ;; (unless (or (null build-command)
+    ;;             (stringp build-command)
+    ;;             (and (listp build-command)
+    ;;                  (-all? #'stringp build-command)))
+    ;;   (error "Build command must either be nil, a string or a list of strings"))
+    ;; (unless (or (null build-filter) (functionp (eval build-filter)))
+    ;;   (error "Build filter must either be nil or a function"))
+    ;; (unless (or (stringp run-command)
+    ;;             (and (listp run-command) (-all? #'stringp run-command)))
+    ;;   (error "Run command must either be nil, a string or a list of strings"))
+    ;; (unless (functionp (eval run-filter))
+    ;;   (error "Run filter must be a function"))
+    ;; (unless (or (null new-test-suite-hook)
+    ;;             (functionp (eval new-test-suite-hook)))
+    ;;   (error "New test suite hook must either be nil or a function"))
+    ;; (unless (or (null new-project-hook)
+    ;;             (functionp (eval new-project-hook)))
+    ;;   (error "New project hook must either be nil or a function"))
     `(progn
        (ut-undef-framework ',framework)
        (defcustom ,(intern (format "ut-%s-build-command" (symbol-name framework)))
@@ -411,7 +448,7 @@ https//github.com/flycheck/"
          :type 'string
          :group 'ut
          :risky t)
-       (defcustom ,(intern (format "ut-%s-build-filter" (symbol-name framework)))
+       (defcustom ,(intern (format "ut-%s-build-filter-hook" (symbol-name framework)))
          ,build-filter
          "Hook to run when build process has been completed"
          :type 'hook
@@ -425,7 +462,7 @@ https//github.com/flycheck/"
          :type 'string
          :group 'ut
          :risky t)
-       (defcustom ,(intern (format "ut-%s-run-filter" (symbol-name framework)))
+       (defcustom ,(intern (format "ut-%s-run-filter-hook" (symbol-name framework)))
          ,run-filter
          "Hook to run when the run process has been completed"
          :type 'hook
@@ -434,6 +471,12 @@ https//github.com/flycheck/"
        (defcustom ,(intern (format "ut-%s-new-test-suite-hook" (symbol-name framework)))
          ,new-test-suite-hook
          "Hook to run when creating a new test suite"
+         :type 'hook
+         :group 'ut
+         :risky t)
+       (defcustom ,(intern (format "ut-%s-new-project-hook" (symbol-name framework)))
+         ,new-project-hook
+         "Hook to run when tests are initially setup for a project"
          :type 'hook
          :group 'ut
          :risky t)
@@ -446,9 +489,11 @@ https//github.com/flycheck/"
   (when (ut-frameworkp framework)
     (let ((framework-str (symbol-name framework)))
       (makunbound (intern (format "ut-%s-build-command" framework-str)))
-      (makunbound (intern (format "ut-%s-build-filter" framework-str)))
+      (makunbound (intern (format "ut-%s-build-filter-hook" framework-str)))
       (makunbound (intern (format "ut-%s-run-command" framework-str)))
-      (makunbound (intern (format "ut-%s-run-filter" framework-str)))
+      (makunbound (intern (format "ut-%s-run-filter-hook" framework-str)))
+      (makunbound (intern (format "ut-%s-new-test-suite-hook" framework-str)))
+      (makunbound (intern (format "ut-%s-new-project-hook" framework-str)))
       (setf ut-frameworks (remove framework ut-frameworks)))))
 
 (defun ut-framework-build-command (framework)
@@ -460,7 +505,7 @@ https//github.com/flycheck/"
 (defun ut-framework-build-filter (framework)
   "Return the build-filter associated with FRAMEWORK, nil if framework DNE."
   (condition-case nil
-      (symbol-value (intern (format "ut-%s-build-filter" framework)))
+      (symbol-value (intern (format "ut-%s-build-filter-hook" framework)))
     (error nil)))
 
 (defun ut-framework-run-command (framework)
@@ -472,13 +517,19 @@ https//github.com/flycheck/"
 (defun ut-framework-run-filter (framework)
   "Return the run-filter associated with FRAMEWORK, nil if framework DNE."
   (condition-case nil
-      (symbol-value (intern (format "ut-%s-run-filter" framework)))
+      (symbol-value (intern (format "ut-%s-run-filter-hook" framework)))
     (error nil)))
 
 (defun ut-framework-new-test-suite-hook (framework)
   "Return the new-test-suite-hook associated with FRAMEWORK, nil if FRAMEWORK DNE."
   (condition-case nil
       (symbol-value (intern (format "ut-%s-new-test-suite-hook" framework)))
+    (error nil)))
+
+(defun ut-framework-new-project-hook (framework)
+  "Return the new-test-suite-hook associated with FRAMEWORK, nil if FRAMEWORK DNE."
+  (condition-case nil
+      (symbol-value (intern (format "ut-%s-new-project-hook" framework)))
     (error nil)))
 
 (defun ut-frameworkp (framework)
@@ -490,6 +541,38 @@ https//github.com/flycheck/"
            (functionp (ut-framework-run-filter framework)))
     (error nil)))
 
+;; Result Functions
+
+;; Results are in following form:
+;; (("test-name1" 'passed)
+;;  ("test-name2" 'failed (('file "filename") ('line "line-number") ('message "Failure Message")))
+;;  ("test-name3" 'error (('file "filename") ('line "line-number") ('message "Error Message"))))
+
+(defun ut-test-suite-resultp (result)
+  "Return t if RESULT is a valid ut-test-suite-result list, nil otherwise."
+  (cond
+   ((not (and (listp result) (> (length result) 0))) nil)
+   ((not (reduce #'(lambda (a b) (and a b))
+                 (mapcar #'ut-test-resultp result))) nil)
+   (t t)))
+
+(defun ut-test-resultp (result)
+  "Return t if RESULT is a valid ut test result, nil otherwise."
+  (cond
+   ((not (listp result)) nil)
+   ((not (stringp (first result))) nil)
+   ((not (member (second result) '(passed failed error))) nil)
+   ((not (if (= (length result) 3)
+             (reduce #'(lambda (a b) (and a b))
+                     (mapcar #'(lambda (part)
+                                 (and (listp part)
+                                      (symbolp (first part))
+                                      (member (first part) '(file line message))
+                                      (stringp (second part))))
+                             (third result)))
+           t)) nil)
+   (t t)))
+
 ;; Drawing functions
 
 (defun ut-draw-buffer (ut-conf)
@@ -497,7 +580,7 @@ https//github.com/flycheck/"
   (with-current-buffer ut-buffer-name
     (erase-buffer)
     (ut-draw-header ut-conf)
-    (maphash #'(lambda (key test-suite) (ut-draw-test test-suite)) (ut-test-suites ut-conf))
+    (maphash #'(lambda (key test-suite) (ut-draw-test-suite test-suite)) (ut-test-suites ut-conf))
     (ut-draw-summary (ut-test-suites ut-conf))))
 
 (defun ut-draw-header (ut-conf)
@@ -506,20 +589,39 @@ https//github.com/flycheck/"
     (insert (concat "/" (make-string (length title) ?-) "\\\n|" title "|\n\\"
                     (make-string (length title) ?-) "/\n"))))
 
-(defun ut-draw-test (test summarize)
-  "Draw TEST, SUMMARIZE the test results if t.
+(defun ut-draw-test-suite (test-suite summarize)
+  "Draw TEST-SUITE, SUMMARIZE the test result if t.
 Display all test information if nil."
-  (insert (ut-test-suite-name test) " : "
-          (cond ((eq (ut-test-suite-result test) 'passed) "Passed")
-                ((eq (ut-test-suite-result test) 'failed) "Failed")
-                (t "Error"))
-          "\n"))
+  (insert (ut-test-suite-name test-suite) ": "
+          (cond
+           ((null (ut-test-suite-resultp (ut-test-suite-result test-suite))) "Not Run")
+           ((not (ut-test-suite-resultp (ut-test-suite-result test-suite))) "Invalid Result")
+           (t (format "%s" (ut-test-suite-result-summary test-suite))))
+          "\n")
+  (when (not summarize)
+    (mapc #'(lambda (test) (ut-draw-test test)) (ut-test-suite-result test-suite))))
+
+(defun ut-draw-test (test)
+  "Draw TEST to current buffer at point."
+  (when (ut-test-resultp test)
+    (insert (format "%s: %s\n" (first test) (second test)))
+    (mapc #'(lambda (test-info) (insert (format "%s: %s\n" (first test-info) (second test-info))))
+          (third test))))
 
 (defun ut-draw-summary (test-suites)
-  "Draw the summarized results of the list of TEST-SUITES."
-  (let ((passed (count-if #'(lambda (suite) (eq (ut-test-suite-result suite) 'passed)) test-suites))
-        (failed (count-if #'(lambda (suite) (eq (ut-test-suite-result suite) 'failed)) test-suites))
-        (errored (count-if #'(lambda (suite) (eq (ut-test-suite-result suite) 'error)) test-suites)))
+  "Draw the summarized result of the list of TEST-SUITES."
+  (let ((passed (count-if #'(lambda (test-suite)
+                              (eq (ut-test-suite-result-summary test-suite)
+                                  'passed))
+                          test-suites))
+        (failed (count-if #'(lambda (test-suite)
+                              (eq (ut-test-suite-result-summary test-suite)
+                                  'failed))
+                          test-suites))
+        (errored (count-if #'(lambda (test-suite)
+                               (eq (ut-test-suite-result-summary test-suite)
+                                   'error))
+                           test-suites)))
     (insert (format "Total Passed: %d Total Failed: %d Total Errors: %d\n"
                     passed failed errored))))
 
@@ -534,7 +636,7 @@ Display all test information if nil."
   (error "Not implemented"))
 
 (defun ut-run-test-suite (test-suite)
-  "Run TEST-SUITE, parse the output and update the results."
+  "Run TEST-SUITE, parse the output and update the result."
   (interactive (lambda () (if (ut-buffer-p) (ut-get-test-suite-at-point) nil)))
   (when (or (null test-suite) (not (ut-test-suite-exists-p (ut-test-suite-name test-suite))))
     (error "Could not find test suite '%s' to run" (ut-test-suite-name test-suite)))

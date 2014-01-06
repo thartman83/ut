@@ -43,6 +43,7 @@
   (should (string= (ut-project-name) "Example"))
   (should (f-same? (ut-project-dir) "../"))
   (should (f-same? (ut-test-dir) "./"))
+  (should (eq (ut-project-framework) 'echo))
   (should (= (ut-test-suite-count) 0)))
 
 (ert-deftest test-ut-write-conf ()
