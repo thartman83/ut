@@ -48,6 +48,19 @@
                                         (f-filename (ut-test-suite-test-dir test-suite))
                                         " /' " (f-join (f-parent (ut-test-suite-test-dir test-suite))
                                                        "Makefile.am")))
+    ;; Add the appropriate entries into the project's configure.ac file
+    (call-process-shell-command (format "sed -i 's;^AC_OUPUT$;%s; %s"
+                                        (mapconcat #'identity
+                                                   '((format "# %s" (ut-test-suite-name test-suite))
+                                                     (format "AC_CONFIG_FILES([%s/Makefile])"
+                                                             (ut-test-suite-test-dir test-suite))
+                                                     (format "AC_CONFIG_FILES([%s/src/Makefile])"
+                                                             (ut-test-suite-test-dir test-suite))
+                                                     ("AC_OUTPUT"))
+                                                   "\n")
+                                        (f-join (f-parent (f-parent
+                                                           (ut-test-suite-test-dir test-suite)))
+                                                "configure.in")))
     (make-directory dir)
     (make-directory (f-join dir "src"))
     (make-directory (f-join dir "bin"))

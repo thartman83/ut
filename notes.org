@@ -6,7 +6,7 @@
 ** pass process-status to build and run filters
 ** Framework should probably be set at the ut-conf level not at the individual test-suite level
 * General
-** Model
+** Models
 *** project
     :PROPERTIES:
     :type:     Hash table
@@ -83,3 +83,4 @@
     :END:
 * Random
 ** %project-dir% is not being expanded because it isn't part of the test-suite hashtable
+** ut-framework-new-test-suite-hook should probably take the ut-conf as well as the test-suite

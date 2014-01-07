@@ -42,7 +42,8 @@
   (should (string= (file-contents (f-join (ut-test-dir ut-conf) "Makefile.am")) "SUBDIRS = "))
   (let ((ts (ut-new-test-suite "foo" (f-join (ut-test-dir) "fooTests") 'cppunit)))
     (should (f-directory? (f-join (f-expand default-directory) "tests/fooTests")))
-    (should (string= (file-contents (f-join (ut-test-dir ut-conf) "Makefile.am")) "SUBDIRS = fooTests "))
+    (should (string= (file-contents (f-join (ut-test-dir ut-conf) "Makefile.am"))
+                     "SUBDIRS = fooTests "))
     (cd "tests/fooTests")
     (should (string= (ut-test-suite-build-command ts)
                      (concat "make -C " (f-join (ut-test-dir) "fooTests"))))
@@ -54,8 +55,32 @@
     (should (f-exists? "src/fooTests.hh"))
     (should (f-exists? "src/fooTests.cc"))
     (should (f-exists? "src/Makefile.am"))
+    
+    
     (start-process-shell-command "make" nil (ut-test-suite-build-command ts))
     (should (eq 0 (process-exit-status (get-process "make"))))))
+
+(defvar ut-test-configure.ac (mapconcat #'identity '("AC_PREREQ(2.26)"
+                                                     "AC_INIT([fooProject],[1.0]"
+                                                     "AC_CONFIG_MACRO_DIR([config])"
+                                                     "AM_INIT_AUTOMAKE([1.11])"
+                                                     "AC_LANG([C++])"
+                                                     ""
+                                                     "AC_PROG_MAKE_SET"
+                                                     "AC_PROG_INSTALL"
+                                                     "AC_PROG_CC"
+                                                     "AC_PROG_CXX"
+                                                     "PKG_CHECK_MODULES([CPPUNIT], [cppunit])"
+                                                     "AC_LANG(C++)"
+                                                     "AC_PROG_LIBTOOL"
+                                                     "AC_LTDL_DLLIB"
+                                                     "AC_CONFIG_FILES([Makefile])"
+                                                     "AC_CONFIG_FILES([src/Makefile])"
+                                                     "AC_CONFIG_FILES([tests/Makefile])"
+                                                     "AC_CONFIG_FILES([tests/fooTests/Makefile])"
+                                                     "AC_CONFIG_FILES([tests/fooTests/src/Makefile])"
+                                                     "AC_OUTPUT")
+                                        "\n"))
 
 (defvar ut-test-cppheader (concat  "#include <string>\nclass foo {\npublic:\n\t"
                                    "foo();\n\nstd::string getFoo();\n};\n"))
