@@ -34,33 +34,19 @@
         (ht-set suite :run-status 'error)
       (ht-set suite :run-status results))))
 
-(defun ut-cppunit-setup-new-test-suite (test-suite)
-  "Setup a new TEST-SUITE."
+(defun ut-cppunit-setup-new-test-suite (test-suite ut-conf)
+  "Setup a new TEST-SUITE for UT-CONF."
   (let* ((name (ut-test-suite-name test-suite))
          (dir (ut-test-suite-test-dir test-suite))
-         (top-makefile.am-text (ut-format default-top-makefile.am test-suite))
-         (src-makefile.am-text (ut-format default-src-makefile.am test-suite))
-         (mainfile-text (ut-format default-mainfile test-suite))
-         (testheader-text (ut-format default-testheader test-suite))
-         (testsource-text (ut-format default-testsource test-suite))
-         (project-name (ut-project-name)))
-    (call-process-shell-command (concat "sed -i 's/\\(SUBDIRS =.*$\\)/\\1"
-                                        (f-filename (ut-test-suite-test-dir test-suite))
-                                        " /' " (f-join (f-parent (ut-test-suite-test-dir test-suite))
-                                                       "Makefile.am")))
-    ;; Add the appropriate entries into the project's configure.ac file
-    (call-process-shell-command (format "sed -i 's;^AC_OUPUT$;%s; %s"
-                                        (mapconcat #'identity
-                                                   '((format "# %s" (ut-test-suite-name test-suite))
-                                                     (format "AC_CONFIG_FILES([%s/Makefile])"
-                                                             (ut-test-suite-test-dir test-suite))
-                                                     (format "AC_CONFIG_FILES([%s/src/Makefile])"
-                                                             (ut-test-suite-test-dir test-suite))
-                                                     ("AC_OUTPUT"))
-                                                   "\n")
-                                        (f-join (f-parent (f-parent
-                                                           (ut-test-suite-test-dir test-suite)))
-                                                "configure.in")))
+         (top-makefile.am-text (ut-format (ut-format default-top-makefile.am test-suite) ut-conf))
+         (src-makefile.am-text (ut-format (ut-format default-src-makefile.am test-suite) ut-conf))
+         (mainfile-text (ut-format (ut-format default-mainfile test-suite) ut-conf))
+         (testheader-text (ut-format (ut-format default-testheader test-suite) ut-conf))
+         (testsource-text (ut-format (ut-format default-testsource test-suite) ut-conf))
+         (project-name (ut-project-name ut-conf)))
+    (ut-add-makefile.am-subdir (ut-project-dir ut-conf)
+                               (f-join (ut-project-dir ut-conf) "Makefile.am"))
+    (ut-add-ac-config-files dir (f-join (ut-project-dir ut-conf) "configure.ac"))
     (make-directory dir)
     (make-directory (f-join dir "src"))
     (make-directory (f-join dir "bin"))
@@ -76,6 +62,36 @@
     (f-write-text (concat (cpp-header (format "%sTests.cc" name) name project-name)
                           testsource-text)
                   'utf-8 (f-join dir (format "src/%sTests.cc" name)))))
+
+(defun ut-add-makefile.am-subdir (subdir makefile.am)
+  "Add SUBDIR to the list of 'SUBDIRS' values in MAKEFILE.AM"
+  (when (not (f-exists? makefile.am))
+    (error "%s does not exist" makefile.am))
+  (let ((text (f-read makefile.am)))
+    (when (not (string-match "SUBDIRS[ \t]*=\\(.*\\)$" text))
+      (error "%s does not contain a SUBDIRS variable to set" makefile.am))
+    (let ((i (match-beginning 1))
+          (j (match-end 1)))
+      (when (not (member subdir (split-string (substring text i j) " " t)))
+        (f-write (concat (substring text 0 j) " " subdir (substring text j))
+                 'utf-8 makefile.am)))))
+
+(defun ut-add-ac-config-files (subdir configure.ac)
+  "Add AC_CONFIG([SUBDIR]/Makefile to CONFIGURE.AC ."
+  (when (not (f-exists? configure.ac))
+    (error "%s does not exist" configure.ac))
+  (let ((text (f-read configure.ac)))
+    (when (not (string-match "AC_OUTPUT" text))
+      (error "%s does not contain AC_OUTPUT, may not be autoconf file" configure.ac))
+    (let ((i (match-beginning 0))
+          (j (match-end 0)))
+      (when (not (string-match (format "AC_CONFIG_FILES(\\[tests/%s/Makefile\\])" subdir) text))
+        (f-write (concat (substring text 0 i)
+                         (format "# %s\n" subdir)
+                         (format "AC_CONFIG_FILES([tests/%s/Makefile])\n" subdir)
+                         (format "AC_CONFIG_FILES([tests/%s/src/Makefile])\n" subdir)
+                         (substring text i))
+                 'utf-8 configure.ac)))))
 
 (defun ut-cppunit-setup-new-project (ut-conf)
   "Setup a testing folders for a new project defined in UT-CONF."
@@ -120,7 +136,7 @@ Using FILE-NAME, TEST-NAME, and PROJECT-NAME"
   "AM_CPPFLAGS = -I%project-dir%/src -I/usr/local/include/
 bin_PROGRAMS = %test-name%
 %test-name%_SOURCES = main.cc %test-name%Tests.cc %test-name%Tests.hh
-%test-name%_LDADD = cppunitsexpoutputter.so")
+%test-name%_LDADD = -L/usr/local/lib/ -lcppunit -lcppunitsexpoutputter")
 
 (defvar default-mainfile
 "#include <cppunit/extensions/TestFactoryRegistry.h>

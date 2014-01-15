@@ -60,6 +60,13 @@ Code somewhat pilfered from test-helper.el from flycheck
       (error "Process '%s' did not finish after %s seconds" process-name
              ut-test-process-wait-time))))
 
+(defun f-contains? (str file)
+  "Return t if FILE contains the substring STR, otherwise nil."
+  (if (not (f-exists? file))
+      nil
+    (let ((text (f-read file)))
+      (not (null (string-match str text))))))
+
 (provide 'test-helpers)
 
 ;;; test-helpers.el ends here
