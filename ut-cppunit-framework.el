@@ -44,15 +44,14 @@
          (testheader-text (ut-format (ut-format default-testheader test-suite) ut-conf))
          (testsource-text (ut-format (ut-format default-testsource test-suite) ut-conf))
          (project-name (ut-project-name ut-conf)))
-    (ut-add-makefile.am-subdir (ut-project-dir ut-conf)
-                               (f-join (ut-project-dir ut-conf) "Makefile.am"))
+    ;; create test-suites directory structure
+    (ut-cppunit-create-test-suite-subdirs dir)
+    ;; create default build/autotools files
+    (ut-add-makefile.am-subdir dir (f-join (ut-project-dir ut-conf) "Makefile.am"))
     (ut-add-ac-config-files dir (f-join (ut-project-dir ut-conf) "configure.ac"))
-    (make-directory dir)
-    (make-directory (f-join dir "src"))
-    (make-directory (f-join dir "bin"))
-    (make-directory (f-join dir "data"))
     (f-write-text top-makefile.am-text 'utf-8 (f-join dir "Makefile.am"))
     (f-write-text src-makefile.am-text 'utf-8 (f-join dir "src/Makefile.am"))
+    ;; create default source and headers
     (f-write-text (concat (cpp-header "main.cc" name project-name)
                           mainfile-text)
                   'utf-8 (f-join dir "src/main.cc"))
@@ -62,6 +61,16 @@
     (f-write-text (concat (cpp-header (format "%sTests.cc" name) name project-name)
                           testsource-text)
                   'utf-8 (f-join dir (format "src/%sTests.cc" name)))))
+
+(defun ut-cppunit-create-test-suite-subdirs (test-suite-dir)
+  "Create the directory structure for a test suite at TEST-SUITE-DIR."
+  (mapc #'(lambda (dir)
+           (unless (f-exists? dir)
+             (make-directory dir)))
+        (list test-suite-dir
+              (f-join test-suite-dir "src")
+              (f-join test-suite-dir "bin")
+              (f-join test-suite-dir "data"))))
 
 (defun ut-add-makefile.am-subdir (subdir makefile.am)
   "Add SUBDIR to the list of 'SUBDIRS' values in MAKEFILE.AM"
@@ -77,7 +86,7 @@
                  'utf-8 makefile.am)))))
 
 (defun ut-add-ac-config-files (subdir configure.ac)
-  "Add AC_CONFIG([SUBDIR]/Makefile to CONFIGURE.AC ."
+  "Add AC_CONFIG([SUBDIR]/Makefile) to CONFIGURE.AC ."
   (when (not (f-exists? configure.ac))
     (error "%s does not exist" configure.ac))
   (let ((text (f-read configure.ac)))

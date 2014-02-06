@@ -40,7 +40,7 @@
    (cd (ut-test-suite-project-dir ut-conf))
    (make-directory "tests")))
 
-(defun ut-echo-new-test-suite (test-suite)
+(defun ut-echo-new-test-suite (test-suite ut-conf)
   "Post new TEST-SUITE hook."
   (save-current-directory
    (make-directory (ut-test-suite-test-dir test-suite))))
@@ -62,7 +62,7 @@
   (with-temp-buffer
     (with-temporary-dir
      (set (make-local-variable 'ut-conf) (ht-create))
-     (let ((suite (ut-new-test-suite "echo1" (f-expand (f-join default-directory "echo1")) 'echo)))
+     (let ((suite (ut-new-test-suite "echo1" "echo1" 'echo)))
        (should (string= (ut-test-suite-build-command suite) "echo -n echo1"))
        (should (string= (ut-test-suite-run-command suite) (concat "echo -n " (ut-test-suite-test-dir suite))))
        (should (f-exists? (ut-test-suite-test-dir suite)))
