@@ -37,7 +37,7 @@
 (defun ut-cppunit-setup-new-test-suite (test-suite ut-conf)
   "Setup a new TEST-SUITE for UT-CONF."
   (let* ((name (ut-test-suite-name test-suite))
-         (dir (ut-test-suite-test-dir test-suite))
+         (dir (f-join (ut-test-dir ut-conf) (ut-test-suite-test-dir test-suite)))
          (top-makefile.am-text (ut-format (ut-format default-top-makefile.am test-suite) ut-conf))
          (src-makefile.am-text (ut-format (ut-format default-src-makefile.am test-suite) ut-conf))
          (mainfile-text (ut-format (ut-format default-mainfile test-suite) ut-conf))
@@ -47,8 +47,10 @@
     ;; create test-suites directory structure
     (ut-cppunit-create-test-suite-subdirs dir)
     ;; create default build/autotools files
-    (ut-add-makefile.am-subdir dir (f-join (ut-project-dir ut-conf) "Makefile.am"))
-    (ut-add-ac-config-files dir (f-join (ut-project-dir ut-conf) "configure.ac"))
+    (ut-add-makefile.am-subdir (ut-test-suite-test-dir test-suite)
+                               (f-join (ut-test-dir ut-conf) "Makefile.am"))
+    (ut-add-ac-config-files (f-relative dir (ut-project-dir ut-conf))
+                            (f-join (ut-project-dir ut-conf) "configure.ac"))
     (f-write-text top-makefile.am-text 'utf-8 (f-join dir "Makefile.am"))
     (f-write-text src-makefile.am-text 'utf-8 (f-join dir "src/Makefile.am"))
     ;; create default source and headers
@@ -82,7 +84,7 @@
     (let ((i (match-beginning 1))
           (j (match-end 1)))
       (when (not (member subdir (split-string (substring text i j) " " t)))
-        (f-write (concat (substring text 0 j) " " subdir (substring text j))
+        (f-write (concat (substring text 0 j) " " subdir " " (substring text j))
                  'utf-8 makefile.am)))))
 
 (defun ut-add-ac-config-files (subdir configure.ac)
@@ -97,8 +99,8 @@
       (when (not (string-match (format "AC_CONFIG_FILES(\\[tests/%s/Makefile\\])" subdir) text))
         (f-write (concat (substring text 0 i)
                          (format "# %s\n" subdir)
-                         (format "AC_CONFIG_FILES([tests/%s/Makefile])\n" subdir)
-                         (format "AC_CONFIG_FILES([tests/%s/src/Makefile])\n" subdir)
+                         (format "AC_CONFIG_FILES([%s/Makefile])\n" subdir)
+                         (format "AC_CONFIG_FILES([%s/src/Makefile])\n" subdir)
                          (substring text i))
                  'utf-8 configure.ac)))))
 

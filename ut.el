@@ -341,7 +341,9 @@ RUN-COMMAND and RUN-FILTER, though they may be overriden."
                  (f-ancestor-of? (ut-test-dir) test-dir)))
     (error "TEST-DIR must be a relative directory or an absolute path as a
  direct ancestor of the projects test root"))
-  (let ((new-suite (ht (:test-name name) (:test-dir test-dir) (:framework framework))))
+  (let ((new-suite (ht (:test-name name)
+                       (:test-dir (f-relative test-dir (ut-test-dir)))
+                       (:framework framework))))
     (ht-set new-suite :build-command
             (if (null build-command)
                 (format-hash (ut-framework-build-command framework) new-suite)
