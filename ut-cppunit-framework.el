@@ -96,7 +96,7 @@
       (error "%s does not contain AC_OUTPUT, may not be autoconf file" configure.ac))
     (let ((i (match-beginning 0))
           (j (match-end 0)))
-      (when (not (string-match (format "AC_CONFIG_FILES(\\[tests/%s/Makefile\\])" subdir) text))
+      (when (not (string-match (format "AC_CONFIG_FILES(\\[%s/Makefile\\])" subdir) text))
         (f-write (concat (substring text 0 i)
                          (format "# %s\n" subdir)
                          (format "AC_CONFIG_FILES([%s/Makefile])\n" subdir)

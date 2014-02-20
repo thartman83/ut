@@ -309,10 +309,10 @@ If all tests pass within TEST-SUITE, the summary result is 'passed."
   "Return t if TEST-SUITE is a valid test-suite, nil otherwise."
   (cond ((not (stringp (ut-test-suite-name test-suite))) nil)
         ((not (stringp (ut-test-suite-test-dir test-suite))) nil)
-        ((not (f-exists? (ut-test-suite-test-dir test-suite))) nil)
+        ((not (f-exists? (f-join (ut-test-dir) (ut-test-suite-test-dir test-suite)))) nil)
         ((not (memq (ut-test-suite-framework test-suite) ut-frameworks)) nil)
         ((and (not (stringp (ut-test-suite-run-command test-suite)))
-              (not (functionp (ut-test-suite-run-command test-suite)))))
+              (not (functionp (ut-test-suite-run-command test-suite)))) nil)
         (t t)))
 
 ;; mutators

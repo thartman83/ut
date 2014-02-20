@@ -34,6 +34,12 @@
 (require 'ert)
 
 (defvar ut-test-process-wait-time 10)
+(defvar *ut-test-files* '("test-ut-conf.el"
+                          "test-ut-draw.el"
+                          "test-ut-result.el"
+                          "test-ut-test-suite.el"
+                          "test-ut-framework.el"
+                          "test-ut.el"))
 
 (defmacro should-error (test expected)
   "Run TEST and expect error EXPECTED."
@@ -66,6 +72,14 @@ Code somewhat pilfered from test-helper.el from flycheck
       nil
     (let ((text (f-read file)))
       (not (null (string-match str text))))))
+
+(defun ut-load-all-tests ()
+  "Load and eval all ut test files."
+  (interactive)
+  (mapc #'(lambda (file) (with-current-buffer
+                             (find-file (f-join ut-testsuite-dir file))
+                           (eval-buffer)))
+        *ut-test-files*))
 
 (provide 'test-helpers)
 

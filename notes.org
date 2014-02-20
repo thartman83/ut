@@ -84,3 +84,5 @@
 * Random
 ** %project-dir% is not being expanded because it isn't part of the test-suite hashtable
 ** ut-framework-new-test-suite-hook should probably take the ut-conf as well as the test-suite
+** ut-test-suite-p is looking for ut-test-suite-run-command to be defined as either a string of function
+   

@@ -54,8 +54,7 @@
      (should (= (call-process-shell-command "autoreconf -i") 0))
      (should (= (call-process-shell-command "./configure") 0))
      (cd "tests/fooTests")
-     (should (string= (ut-test-suite-build-command ts)
-                      (concat "make -C " (f-join (ut-test-dir) "fooTests"))))
+     (should (string= (ut-test-suite-build-command ts) (concat "make -C fooTests")))
      (should (f-directory? "src"))
      (should (f-directory? "bin"))
      (should (f-directory? "data"))
@@ -65,7 +64,9 @@
      (should (f-exists? "src/fooTests.cc"))
      (should (f-exists? "src/Makefile.am"))
      (start-process-shell-command "make" nil (ut-test-suite-build-command ts))
-     (should (eq 0 (process-exit-status (get-process "make")))))))
+     (should (eq 0 (process-exit-status (get-process "make"))))
+     (start-process-shell-command "run" nil (ut-test-suite-build-command ts))
+     (should (eq 0 (process-exit-status (get-process "run")))))))
 
 (ert-deftest ut-test-add-makefile.am-subdir ()
   (ut-reset-conf)
@@ -127,15 +128,15 @@
    (f-write "AC_OUTPUT" 'utf-8 "configure.ac")
    (ut-add-ac-config-files "fooTests" "configure.ac")
    (should (f-contains? "# fooTests" "configure.ac"))
-   (should (f-contains? "AC_CONFIG_FILES(\\[tests/fooTests/Makefile\\])" "configure.ac"))
-   (should (f-contains? "AC_CONFIG_FILES(\\[tests/fooTests/src/Makefile\\])" "configure.ac"))
+   (should (f-contains? "AC_CONFIG_FILES(\\[fooTests/Makefile\\])" "configure.ac"))
+   (should (f-contains? "AC_CONFIG_FILES(\\[fooTests/src/Makefile\\])" "configure.ac"))
    ;; Test adding a test subdir again doesn't add multiple entries
    (ut-add-ac-config-files "fooTests" "configure.ac")
    (let ((lines (split-string (f-read "configure.ac") "\n")))
      (should (equal (mapcar #'(lambda (part) (count part lines :test #'string=))
                             (list "# fooTests"
-                                  "AC_CONFIG_FILES([tests/fooTests/Makefile])"
-                                  "AC_CONFIG_FILES([tests/fooTests/src/Makefile])"))
+                                  "AC_CONFIG_FILES([fooTests/Makefile])"
+                                  "AC_CONFIG_FILES([fooTests/src/Makefile])"))
                     '(1 1 1))))))
 
 (defvar ut-test-configure.ac (mapconcat #'identity '("AC_PREREQ(2.26)"
