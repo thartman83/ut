@@ -34,16 +34,16 @@
       'passed
     'failed))
 
-(defun ut-echo-new-project (ut-conf)
+(defun ut-echo-new-project (conf)
   "Project new project hook"
   (save-current-directory
-   (cd (ut-test-suite-project-dir ut-conf))
+   (cd (ut-test-suite-project-dir conf))
    (make-directory "tests")))
 
-(defun ut-echo-new-test-suite (test-suite ut-conf)
+(defun ut-echo-new-test-suite (test-suite conf)
   "Post new TEST-SUITE hook."
   (save-current-directory
-   (make-directory (ut-test-suite-test-dir test-suite))))
+   (make-directory (f-join (ut-test-dir conf) (ut-test-suite-test-dir test-suite)))))
 
 (ert-deftest test-ut-new-framework ()
   (ut-define-framework echo
@@ -61,15 +61,16 @@
                (functionp (ut-framework-new-test-suite-hook 'echo))))
   (with-temp-buffer
     (with-temporary-dir
-     (set (make-local-variable 'ut-conf) (ht-create))
-     (let ((suite (ut-new-test-suite "echo1" "echo1" 'echo)))
+     (make-directory "tests")
+     (let* ((conf (ut-new-conf ".tests" "echo-test" default-directory 
+                               (f-join default-directory "tests") 'echo))
+            (suite (ut-new-test-suite conf "echo1" "echo1" 'echo)))
        (should (string= (ut-test-suite-build-command suite) "echo -n echo1"))
        (should (string= (ut-test-suite-run-command suite) (concat "echo -n " (ut-test-suite-test-dir suite))))
-       (should (f-exists? (ut-test-suite-test-dir suite)))
-       (ut-build-test-suite suite)
+       (ut-build-test-suite conf suite)
        (ut-test-wait-for-process "build-echo1")
        (should (eq (ut-test-suite-build-status suite) 'built))
-       (ut-run-test-suite suite)
+       (ut-run-test-suite conf suite)
        (ut-test-wait-for-process "run-echo1")
        (should (eq (ut-test-suite-run-status suite) 'passed))))))
 

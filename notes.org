@@ -85,4 +85,8 @@
 ** %project-dir% is not being expanded because it isn't part of the test-suite hashtable
 ** ut-framework-new-test-suite-hook should probably take the ut-conf as well as the test-suite
 ** ut-test-suite-p is looking for ut-test-suite-run-command to be defined as either a string of function
-   
+** ut-draw-buffer and ut both use with-current-buffer, doesn't hurt anything but is redundent
+** ut-build-test-suite
+*** ut-buffer-p is not defined but called
+*** ut-get-test-suite-at-point is not defined but called
+*** interactive call dumps if not in ut-buffer, probably should ask for input from user instead

@@ -34,23 +34,23 @@
         (ht-set suite :run-status 'error)
       (ht-set suite :run-status results))))
 
-(defun ut-cppunit-setup-new-test-suite (test-suite ut-conf)
-  "Setup a new TEST-SUITE for UT-CONF."
+(defun ut-cppunit-setup-new-test-suite (test-suite conf)
+  "Setup a new TEST-SUITE for CONF."
   (let* ((name (ut-test-suite-name test-suite))
-         (dir (f-join (ut-test-dir ut-conf) (ut-test-suite-test-dir test-suite)))
-         (top-makefile.am-text (ut-format (ut-format default-top-makefile.am test-suite) ut-conf))
-         (src-makefile.am-text (ut-format (ut-format default-src-makefile.am test-suite) ut-conf))
-         (mainfile-text (ut-format (ut-format default-mainfile test-suite) ut-conf))
-         (testheader-text (ut-format (ut-format default-testheader test-suite) ut-conf))
-         (testsource-text (ut-format (ut-format default-testsource test-suite) ut-conf))
-         (project-name (ut-project-name ut-conf)))
+         (dir (f-join (ut-test-dir conf) (ut-test-suite-test-dir test-suite)))
+         (top-makefile.am-text (ut-format (ut-format default-top-makefile.am test-suite) conf))
+         (src-makefile.am-text (ut-format (ut-format default-src-makefile.am test-suite) conf))
+         (mainfile-text (ut-format (ut-format default-mainfile test-suite) conf))
+         (testheader-text (ut-format (ut-format default-testheader test-suite) conf))
+         (testsource-text (ut-format (ut-format default-testsource test-suite) conf))
+         (project-name (ut-project-name conf)))
     ;; create test-suites directory structure
     (ut-cppunit-create-test-suite-subdirs dir)
     ;; create default build/autotools files
     (ut-add-makefile.am-subdir (ut-test-suite-test-dir test-suite)
-                               (f-join (ut-test-dir ut-conf) "Makefile.am"))
-    (ut-add-ac-config-files (f-relative dir (ut-project-dir ut-conf))
-                            (f-join (ut-project-dir ut-conf) "configure.ac"))
+                               (f-join (ut-test-dir conf) "Makefile.am"))
+    (ut-add-ac-config-files (f-relative dir (ut-project-dir conf))
+                            (f-join (ut-project-dir conf) "configure.ac"))
     (f-write-text top-makefile.am-text 'utf-8 (f-join dir "Makefile.am"))
     (f-write-text src-makefile.am-text 'utf-8 (f-join dir "src/Makefile.am"))
     ;; create default source and headers
@@ -104,11 +104,11 @@
                          (substring text i))
                  'utf-8 configure.ac)))))
 
-(defun ut-cppunit-setup-new-project (ut-conf)
-  "Setup a testing folders for a new project defined in UT-CONF."
-  (unless (f-exists? (ut-test-dir ut-conf))
-    (make-directory (ut-test-dir ut-conf)))
-  (f-write-text "SUBDIRS = " 'utf-8 (f-join (ut-test-dir ut-conf) "Makefile.am")))
+(defun ut-cppunit-setup-new-project (conf)
+  "Setup a testing folders for a new project defined in CONF."
+  (unless (f-exists? (ut-test-dir conf))
+    (make-directory (ut-test-dir conf)))
+  (f-write-text "SUBDIRS = " 'utf-8 (f-join (ut-test-dir conf) "Makefile.am")))
 
 (defun cpp-header (file-name test-name project-name)
   "Combine the copyright and license to form MEGA HEADER!.
@@ -116,7 +116,7 @@ No wait, just a cpp header, sorry about that.
 FILE-NAME, TEST-NAME and PROJECT-NAME are passed to copyright."
   (concat (mapconcat #'(lambda (x) (cpp-comment-pretty x))
                      (list (make-string 76 ?*)
-                           (copyright file-name test-name (ut-project-name))
+                           (copyright file-name test-name project-name)
                            ""
                            gplv2-license
                            (make-string 76 ?*))
