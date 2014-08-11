@@ -31,8 +31,7 @@
   (let ((conf (ht (:project-name "foo"))))
     (should
      (string= (with-insert-as-string (ut-draw-header conf))
-
-              "/--------------------\\\n| Unit Tests for foo |\n\\--------------------/\n"))))
+              " Unit Tests for foo \n"))))
 
 (ert-deftest test-ut-draw-test-suite ()
   (let ((test-suite (ht (:test-name "Foo") (:result '(("Bar" passed)
@@ -65,12 +64,12 @@
                    "Bobo: failed\nline: 2\nfile: bobo.c\nmessage: Something went wrong\n")))
 
 (ert-deftest test-ut-draw-summary ()
-  (let ((tests (list (ht (:test-name 'foo) (:result '(("1" passed)
-                                                      ("2" passed)
-                                                      ("3" passed))))
-                     (ht (:test-name 'bar) (:result '(("4" failed))))
-                     (ht (:test-name 'baz) (:result '(("5" error))))
-                     (ht (:test-name 'blah) (:result '(("6" passed)))))))
+  (let ((tests (ht ("1" (ht (:test-name "1") (:result '(("a" passed)
+                                                        ("b" passed)
+                                                        ("c" passed)))))
+                   ("2" (ht (:test-name "2") (:result '(("d" failed)))))
+                   ("3" (ht (:test-name "3") (:result '(("e" error)))))
+                   ("4" (ht (:test-name "4") (:result '(("f" passed))))))))
     (should (string= (with-insert-as-string (ut-draw-summary tests))
                      "Total Passed: 2 Total Failed: 1 Total Errors: 1\n"))))
 

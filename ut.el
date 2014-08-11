@@ -48,6 +48,26 @@
 
 ;; Faces
 
+(defface ut-header-label
+  `((((class color) (background light))
+     :box t
+     :background "Grey85"
+     :foreground "DarkOliveGreen")
+    (((class color) (background dark))
+     :box t
+     :background "Grey13"
+     :foreground "DarkOliveGreen"))
+  "Face for test header labels"
+  :group 'ut)
+
+(defface ut-test-suite-name
+  `((((class color) (background light))
+     :foreground "firebrick3")
+    (((class color) (background dark))
+     :foreground "firebrick4"))
+  "Face for test-suite-name"
+  :group 'ut)
+
 (defface ut-header-face
   `((((class color) (background dark))
      (:foreground "blue" :bold t))
@@ -148,7 +168,7 @@ Returns nil if the file does not exist."
 
 (defun ut-test-dir (conf)
   "Return test dir associated with CONF."
-  (gethash :test-dir conf))
+  (f-join (gethash :project-dir conf) (gethash :test-dir conf)))
 
 (defun ut-test-suites (conf)
   "Return test suites associated with CONF."
@@ -171,7 +191,8 @@ Returns nil if the file does not exist."
         ((null (ut-project-dir conf)) nil)
         ((null (ut-test-dir conf)) nil)
         ((not (ht? (ut-test-suites conf))) nil)
-        ((not (-all? #'ut-test-suite-p (ht-values (ut-test-suites conf)))) nil)
+        ((not (-all? #'(lambda (val) (ut-test-suite-p conf val))
+                     (ht-values (ut-test-suites conf)))) nil)
         (t t)))
 
 ;; creation and manipulation
@@ -312,7 +333,8 @@ If all tests pass within TEST-SUITE, the summary result is 'passed."
   "Return t if CONF's TEST-SUITE is a valid test suite."
   (cond ((not (stringp (ut-test-suite-name test-suite))) nil)
         ((not (stringp (ut-test-suite-test-dir test-suite))) nil)
-        ((not (f-exists? (f-join (ut-test-dir conf) (ut-test-suite-test-dir test-suite)))) nil)
+        ((not (f-exists? (f-join (ut-project-dir conf) (ut-test-dir conf)
+                                 (ut-test-suite-test-dir test-suite)))) nil)
         ((not (memq (ut-test-suite-framework test-suite) ut-frameworks)) nil)
         ((and (not (stringp (ut-test-suite-run-command test-suite)))
               (not (functionp (ut-test-suite-run-command test-suite)))) nil)
@@ -327,16 +349,6 @@ If all tests pass within TEST-SUITE, the summary result is 'passed."
 TEST-DIR as the path to the test files.
 FRAMEWORK defines the default values for BUILD-COMMAND, BUILD-FILTER,
 RUN-COMMAND and RUN-FILTER, though they may be overriden."
-  (interactive (let* ((n (read-string "Test suite name: "))
-                      (default-path (f-join (ut-test-dir) n))
-                      (d (read-directory-name "Path to test: " default-path
-                                              default-path nil))
-                      (f (completing-read "Framework: " ut-frameworks)))
-                 (when (not (f-directory? (f-join (ut-test-dir) test-dir)))
-                   (if (y-or-no-p (format "Test directory `%s' does not exist, create it?" test-dir))
-                       (make-directory (f-join (ut-test-dir) test-dir))
-                     (error "Aborting")))
-                 (list n d (intern f))))
   (when (ut-test-suite-exists-p conf name)
     (error "Test suite '%s' already exists" name))
   (when (not (memq framework ut-frameworks))
@@ -392,7 +404,8 @@ RUN-COMMAND and RUN-FILTER, though they may be overriden."
           (suite (process-get process :test-suite)))
       (process-put process :finished t)
       (ht-set suite :build-status (funcall (ut-test-suite-build-filter suite)
-                                           suite build-exit-status build-output)))))
+                                           suite build-exit-status build-output))
+      (ut-draw-buffer))))
 
 (defun ut-run-process-filter (process output)
   "Handle run PROCESS OUTPUT."
@@ -407,7 +420,8 @@ RUN-COMMAND and RUN-FILTER, though they may be overriden."
           (suite (process-get process :test-suite)))
       (process-put process :finished t)
       (ht-set suite :run-status (funcall (ut-test-suite-run-filter suite)
-                                         suite run-exit-status run-output)))))
+                                         suite run-exit-status run-output))
+      (ut-draw-buffer))))
 
 ;; Misc
 
@@ -608,24 +622,30 @@ https//github.com/flycheck/"
 
 ;; Drawing functions
 
-(defun ut-draw-buffer (conf)
+(defun ut-draw-buffer ()
   "Draw the complete unit testing buffer based on CONF."
-  (with-current-buffer (ut-buffer-name conf)
+  (interactive)
+  (when (ut-buffer-p)
     (erase-buffer)
-    (ut-draw-header conf)
-    (maphash #'(lambda (key test-suite) (ut-draw-test-suite test-suite)) (ut-test-suites conf))
-    (ut-draw-summary (ut-test-suites conf))))
+    (ut-draw-header ut-conf)
+    (insert "\n")
+    (maphash #'(lambda (key test-suite)
+                 (ut-draw-test-suite test-suite nil)
+                 (insert "\n"))
+             (ut-test-suites ut-conf))
+    (insert "\n")
+    (ut-draw-summary (ut-test-suites ut-conf))))
 
 (defun ut-draw-header (conf)
   "Draw the ut buffer header based on CONF at point."
   (let ((title (concat " Unit Tests for " (ut-project-name conf) " ")))
-    (insert (concat "/" (make-string (length title) ?-) "\\\n|" title "|\n\\"
-                    (make-string (length title) ?-) "/\n"))))
+    (insert (propertize title 'face 'ut-header-label))
+    (insert "\n")))
 
 (defun ut-draw-test-suite (test-suite summarize)
   "Draw TEST-SUITE, SUMMARIZE the test result if t.
 Display all test information if nil."
-  (insert (ut-test-suite-name test-suite) ": "
+  (insert (propertize (concat (ut-test-suite-name test-suite) ": ") 'face 'ut-test-suite-name)
           (cond
            ((null (ut-test-suite-resultp (ut-test-suite-result test-suite))) "Not Run")
            ((not (ut-test-suite-resultp (ut-test-suite-result test-suite))) "Invalid Result")
@@ -643,26 +663,30 @@ Display all test information if nil."
 
 (defun ut-draw-summary (test-suites)
   "Draw the summarized result of the list of TEST-SUITES."
-  (let ((passed (count-if #'(lambda (test-suite)
-                              (eq (ut-test-suite-result-summary test-suite)
-                                  'passed))
-                          test-suites))
-        (failed (count-if #'(lambda (test-suite)
-                              (eq (ut-test-suite-result-summary test-suite)
-                                  'failed))
-                          test-suites))
-        (errored (count-if #'(lambda (test-suite)
-                               (eq (ut-test-suite-result-summary test-suite)
-                                   'error))
-                           test-suites)))
+  (let* ((test-results (ht-map #'(lambda (key val) (ut-test-suite-result-summary val)) test-suites))
+         (passed (count-if #'(lambda (result) (eq result 'passed)) test-results))
+         (failed (count-if #'(lambda (result) (eq result 'failed)) test-results))
+         (errored (count-if #'(lambda (result) (eq result 'error)) test-results)))
     (insert (format "Total Passed: %d Total Failed: %d Total Errors: %d\n"
                     passed failed errored))))
 
 ;; Interactives
 
-(defun ut-add-test-suite (test-suite)
-  "Add TEST-SUITE as a new test suite to the ut definition."
-  (error "Not implemented"))
+(defun ut-add-test-suite (conf test-suite)
+  "Add to CONF TEST-SUITE as a new test suite to the ut definition."
+  (interactive (let* ((c (if (ut-buffer-p) ut-conf nil))
+                      (n (read-string "Test suite name: "))
+                      (default-path (f-join (ut-test-dir c) n))
+                      (d (read-directory-name "Path to test: " default-path
+                                              default-path nil))
+                      (f (completing-read "Framework: " ut-frameworks)))
+                 (when (not (f-directory? d))
+                   (if (y-or-n-p (format "Test directory `%s' does not exist, create it?" d))
+                       (make-directory (f-join (ut-test-dir c) d))
+                     (error "Aborting")))
+                 (list c (ut-new-test-suite c n d (intern f)))))
+  (ut-write-conf conf (f-join (ut-project-dir conf) ut-conf-name))
+  (ut-draw-buffer conf))
 
 (defun ut-delete-test-suite (test-suite)
   "Delete TEST-SUITE from the current ut definition."
@@ -670,9 +694,9 @@ Display all test information if nil."
 
 (defun ut-run-test-suite (conf test-suite)
   "Run CONF/TEST-SUITE, parse the output and update the result."
-  (interactive (lambda () (list
-                           (if (ut-buffer-p) ut-conf nil)
-                           (if (ut-buffer-p) (ut-get-test-suite-at-point) nil))))
+  (interactive (list
+                (if (ut-buffer-p) ut-conf nil)
+                (if (ut-buffer-p) (ut-get-test-suite-at-point) nil)))
   (when (not (ut-test-suite-p conf test-suite))
     (error "Could not find test suite '%s' to run" (ut-test-suite-name test-suite)))
   (let* ((process-name (concat "run-" (ut-test-suite-name test-suite)))
@@ -691,12 +715,10 @@ Display all test information if nil."
   (error "Not implemented"))
 
 (defun ut-build-test-suite (conf test-suite)
-  "Build CONF/TEST-SUITE, parse the output and update the compilation status.
-
-If called interactively, search for the test suite at point."
-  (interactive (lambda () (list
-                           (if (ut-buffer-p) ut-conf nil)
-                           (if (ut-buffer-p) (ut-get-test-suite-at-point) nil))))
+  "Build CONF/TEST-SUITE, parse the output and update the compilation status."
+  (interactive (list
+                (if (ut-buffer-p) ut-conf nil)
+                (if (ut-buffer-p) (ut-get-test-suite-at-point) nil)))
   (when (not (ut-test-suite-p conf test-suite))
     (error "Could not find test suite '%s' to build" (ut-test-suite-name test-suite)))
   (let* ((process-name (concat "build-" (ut-test-suite-name test-suite)))
@@ -732,6 +754,33 @@ If called interactively, search for the test suite at point."
   "Run the profiler associated with TEST-SUITE."
   (error "Not Implemented"))
 
+(defun ut-get-test-suite-at-point ()
+  "Return the name of the test suite at point."
+  (interactive)
+  (when (not (ut-buffer-p))
+    (error "Not in a UT buffer"))
+  (save-excursion
+    (beginning-of-line)
+    (let ((found nil))
+      (while (and (not (= (1+ (count-lines 1 (point))) 1)) (null found))
+        (when (and (string-match "^\\(.*\\):" (buffer-substring (point) (line-end-position)))
+                   (eq (get-text-property (point) 'face) 'ut-test-suite-name))
+          (let ((name (buffer-substring-no-properties (point) (1- (+ (point) (match-end 0))))))
+            (when (ut-test-suite-exists-p ut-conf name)
+              (setf found (ut-get-test-suite ut-conf name)))))
+        (previous-line))
+      found)))
+
+(defun ut-build-interactive ()
+  "Interactive version of ut-build-test-suite.  Build CONF/TEST-SUITE."
+  (interactive)
+  (when (not (ut-buffer-p))
+    (error "Not in UT buffer"))
+  (let ((test-suite (ut-get-test-suite-at-point)))
+    (when (null test-suite)
+      (error "No test suite at point"))
+    (ut-build-test-suite ut-conf test-suite)))
+
 ;; Main entry function and mode defuns
 
 (defun ut ()
@@ -749,23 +798,31 @@ If called interactively, search for the test suite at point."
          (def (ut-parse-conf conf-file))
          (buffer-name (ut-buffer-name def)))
     (with-current-buffer (get-buffer-create buffer-name)
-      (setq-local ut-def def)
       (ut-mode)
-      (ut-draw-buffer def))
-    (switch-to-buffer buffer-name)))
+      (setq-local ut-conf def)
+      (when (not (f-directory? (ut-test-dir ut-conf)))
+        (error "Test directory does not exist"))
+      (cd (ut-test-dir ut-conf))
+      (ut-draw-buffer)
+      (switch-to-buffer buffer-name))))
+
+(defun ut-buffer-p ()
+  "Return t if the current buffer is in a ut-mode buffer."
+  (eq major-mode 'ut-mode))
 
 ;; Mode and mode map
 
 (defvar ut-mode-map
   (let ((map (make-sparse-keymap)))
-    (suppress-keymap map)
+    (suppress-keymap map t)
     (define-key map "a" 'ut-add-test-suite)
     (define-key map "d" 'ut-delete-test-suite)
     (define-key map "r" 'ut-run-test-suite)
     (define-key map "R" 'ut-run-all)
-    (define-key map "b" 'ut-build-test-suite)
+    (define-key map "b" 'ut-build-interactive)
     (define-key map "B" 'ut-build-all)
     (define-key map "t" 'ut-toggle)
+    (define-key map "g" 'ut-draw-buffer)
     (define-key map [return] 'ut-toggle)
     (define-key map "q" 'ut-quit)
     (define-key map "d" 'ut-debug-test-suite)

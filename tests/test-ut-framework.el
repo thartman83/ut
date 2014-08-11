@@ -65,8 +65,11 @@
      (let* ((conf (ut-new-conf ".tests" "echo-test" default-directory 
                                (f-join default-directory "tests") 'echo))
             (suite (ut-new-test-suite conf "echo1" "echo1" 'echo)))
+       (setq-local ut-conf conf)
+       (setq-local major-mode 'ut-mode)
        (should (string= (ut-test-suite-build-command suite) "echo -n echo1"))
-       (should (string= (ut-test-suite-run-command suite) (concat "echo -n " (ut-test-suite-test-dir suite))))
+       (should (string= (ut-test-suite-run-command suite) 
+                        (concat "echo -n " (ut-test-suite-test-dir suite))))
        (ut-build-test-suite conf suite)
        (ut-test-wait-for-process "build-echo1")
        (should (eq (ut-test-suite-build-status suite) 'built))

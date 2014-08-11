@@ -90,3 +90,4 @@
 *** ut-buffer-p is not defined but called
 *** ut-get-test-suite-at-point is not defined but called
 *** interactive call dumps if not in ut-buffer, probably should ask for input from user instead
+** ut-draw-test-suite needs a lot of work, need to hash out summarize features as well as test-suite status
