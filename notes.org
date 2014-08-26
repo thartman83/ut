@@ -100,3 +100,4 @@
    Current solution is a bit hackish.
 ** DONE Makefile.am in ${test-suite}/src/ using camel case instead of snake case for cunit
 ** DONE Wrong path for cunit-sexp-outputer include and lib
+** TODO Make UT buffer readonly by default
