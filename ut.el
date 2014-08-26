@@ -680,12 +680,15 @@ Display all test information if nil."
                       (default-path (f-join (ut-test-dir c) n))
                       (d (read-directory-name "Path to test: " default-path
                                               default-path nil))
-                      (f (completing-read "Framework: " ut-frameworks)))
+                      (f (intern (completing-read
+                                  (format "Framework [%s] : " (ut-project-framework c))
+                                  (mapcar #'symbol-name ut-frameworks)
+                                  nil nil (symbol-name (ut-project-framework c))))))
                  (when (not (f-directory? d))
-                   (if (y-or-n-p (format "Test directory `%s' does not exist, create it?" d))
+                   (if (y-or-n-p (format "Test directory `%s' does not exist create it?" d))
                        (make-directory (f-join (ut-test-dir c) d))
                      (error "Aborting")))
-                 (list c (ut-new-test-suite c n d (intern f)))))
+                 (list c (ut-new-test-suite c n d f))))
   (ut-write-conf conf (f-join (ut-project-dir conf) ut-conf-name))
   (ut-draw-buffer conf))
 
