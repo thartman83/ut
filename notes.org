@@ -100,4 +100,17 @@
    Current solution is a bit hackish.
 ** DONE Makefile.am in ${test-suite}/src/ using camel case instead of snake case for cunit
 ** DONE Wrong path for cunit-sexp-outputer include and lib
-** TODO Make UT buffer readonly by default
+** DONE Make UT buffer readonly by default
+** DONE Fix building from ut buffer
+   Building a test suite doesn't currently display anything
+** DONE Create logging facilities
+** DONE Build command moves point to end of buffer after finishing
+   Fixed for the most part, fall out from destorying the contents of
+   the buffer and inserting new information. Now preserves the
+   current line number. Ideally it will go back to the last grouping
+   it was in/on, but that can be for another times.
+** DONE Defined key 'tab' doesn't seem to be working properly in the mode map
+   looks like a yasnippet issue some how, need to investigate further,
+   for the moment just turn off yas-minor-mode to resolve
+** DONE Build details are in reverse order
+   title pretty much says it all doesn't it

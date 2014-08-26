@@ -62,9 +62,9 @@
 
 (defface ut-test-suite-name
   `((((class color) (background light))
-     :foreground "firebrick3")
+     :foreground "blue" :bold t)
     (((class color) (background dark))
-     :foreground "firebrick4"))
+     :foreground "blue" :bold t))
   "Face for test-suite-name"
   :group 'ut)
 
@@ -144,6 +144,9 @@
 (defvar ut-buffer-name-template "*UT %s*"
   "Template for ut buffers.")
 
+(defvar *ut-log-buffer* "*UT Log*"
+  "Name of the buffer for logging UT mode messages.")
+
 ;; Misc helper functions
 
 (defun read-file-contents (filename)
@@ -153,6 +156,16 @@ Returns nil if the file does not exist."
       (with-temp-buffer (insert-file-contents filename)
                         (read (buffer-substring (point-min) (point-max))))
     nil))
+
+;; Logging Functions
+
+(defun ut-log-message (msg &rest args)
+  "Log MSG with format ARGS to the ut log buffer."
+  (let ((inhibit-read-only t))
+    (with-current-buffer (get-buffer-create *ut-log-buffer*)
+      (goto-char (point-max))
+      (insert (apply #'format (cons msg args))))))
+
 
 ;; Functions to read, write and manipulate the ut configuration file
 
@@ -286,9 +299,22 @@ Fields:
   "Return the build-filter associated with TEST-SUITE."
   (gethash :build-filter test-suite))
 
+(defun ut-test-suite-build-details (test-suite)
+  "Return the build-details associated with TEST-SUITE."
+  (ht-get test-suite :build-details ""))
+
+(defun ut-test-suite-build-time (test-suite)
+  "Return the build-time associated with TEST-SUITE."
+  (ht-get test-suite :build-time ""))
+
 (defun ut-test-suite-build-status (test-suite)
   "Return the build-status associated with TEST-SUITE."
   (ht-get test-suite :build-status 'not-built))
+
+(defun ut-test-suite-summarize-build (test-suite)
+  "Return whether to summarize the build information associated with TEST-SUITE.
+Default is true."
+  (ht-get test-suite :summarize-build t))
 
 (defun ut-test-suite-run-command (test-suite)
   "Return the run-command associated with TEST-SUITE."
@@ -395,7 +421,7 @@ RUN-COMMAND and RUN-FILTER, though they may be overriden."
 (defun ut-build-process-filter (process output)
   "Handle build PROCESS OUTPUT."
   (process-put process :build-output
-               (cons output (process-get process :build-output))))
+               (append (process-get process :build-output) (list output))))
 
 (defun ut-build-process-sentinel (process event)
   "Handle build PROCESS EVENT."
@@ -404,8 +430,8 @@ RUN-COMMAND and RUN-FILTER, though they may be overriden."
           (build-exit-status (process-exit-status process))
           (suite (process-get process :test-suite)))
       (process-put process :finished t)
-      (ht-set suite :build-status (funcall (ut-test-suite-build-filter suite)
-                                           suite build-exit-status build-output))
+      (ht-set suite :build-time (current-time-string))
+      (funcall (ut-test-suite-build-filter suite) suite build-exit-status build-output)
       (ut-draw-buffer ut-conf))))
 
 (defun ut-run-process-filter (process output)
@@ -625,8 +651,8 @@ https//github.com/flycheck/"
 
 (defun ut-draw-buffer (conf)
   "Draw the complete unit testing buffer based on CONF."
-  (interactive)
-  (let ((inhibit-read-only t))
+  (let ((inhibit-read-only t)
+        (line-number (line-number-at-pos)))
     (when (ut-buffer-p)
       (erase-buffer)
       (ut-draw-header conf)
@@ -636,7 +662,13 @@ https//github.com/flycheck/"
                    (insert "\n"))
                (ut-test-suites conf))
       (insert "\n")
-      (ut-draw-summary (ut-test-suites conf)))))
+      (ut-draw-summary (ut-test-suites conf))
+      (goto-line line-number))))
+
+(defun ut-draw-buffer-interactive ()
+  "Draw the complete unit testing buffer based on the local buffer variable ut-conf."
+  (interactive)
+  (ut-draw-buffer ut-conf))
 
 (defun ut-draw-header (conf)
   "Draw the ut buffer header based on CONF at point."
@@ -647,14 +679,22 @@ https//github.com/flycheck/"
 (defun ut-draw-test-suite (test-suite summarize)
   "Draw TEST-SUITE, SUMMARIZE the test result if t.
 Display all test information if nil."
-  (insert (propertize (concat (ut-test-suite-name test-suite) ": ") 'face 'ut-test-suite-name)
-          (cond
-           ((null (ut-test-suite-resultp (ut-test-suite-result test-suite))) "Not Run")
-           ((not (ut-test-suite-resultp (ut-test-suite-result test-suite))) "Invalid Result")
-           (t (format "%s" (ut-test-suite-result-summary test-suite))))
-          "\n")
-  (when (not summarize)
-    (mapc #'(lambda (test) (ut-draw-test test)) (ut-test-suite-result test-suite))))
+  (insert (propertize (concat (ut-test-suite-name test-suite) ": ") 'face 'ut-test-suite-name) "\n")
+  (insert (format "\t%s Build Status: %s [%s]\n"
+                  (if (ut-test-suite-summarize-build test-suite) "+" "-")
+                  (cond ((null (ut-test-suite-build-status test-suite))
+                         "Not Built")
+                        ((eq (ut-test-suite-build-status test-suite) 'built)
+                         (propertize "Succeeded" 'face 'ut-succeeded-face))
+                        ((eq (ut-test-suite-build-status test-suite) 'error)
+                         (propertize "Failed" 'face 'ut-error-face))
+                        (t "Unknown Build Status"))
+                  (ut-test-suite-build-time test-suite)))
+  (when (not (ut-test-suite-summarize-build test-suite))
+    (insert (mapconcat #'(lambda (line) (format "\t%s\n" line))
+                       (split-string (ut-test-suite-build-details test-suite) "\n")
+                       ""))))
+;(mapc #'(lambda (test) (ut-draw-test test)) (ut-test-suite-result test-suite))
 
 (defun ut-draw-test (test)
   "Draw TEST to current buffer at point."
@@ -726,6 +766,9 @@ Display all test information if nil."
                 (if (ut-buffer-p) (ut-get-test-suite-at-point) nil)))
   (when (not (ut-test-suite-p conf test-suite))
     (error "Could not find test suite '%s' to build" (ut-test-suite-name test-suite)))
+  (ut-log-message "Building test-suite `%s' with command `%s': \n"
+                  (ut-test-suite-name test-suite)
+                  (ut-test-suite-build-command test-suite))
   (let* ((process-name (concat "build-" (ut-test-suite-name test-suite)))
          (process-command (split-string (ut-test-suite-build-command test-suite) " "))
          (process (apply #'start-process (append (list process-name (current-buffer)
@@ -743,7 +786,14 @@ Display all test information if nil."
 
 (defun ut-toggle ()
   "Toggle the narrowing/widening of the context sensitive region."
-  (error "Not Implemented"))
+  (interactive)
+  (if (not (ut-buffer-p))
+    (error "Not in a UT buffer")
+    (let ((test-suite (ut-get-test-suite-at-point)))
+      (when (null test-suite)
+        (error "No test suite at point"))
+      (ht-set! test-suite :summarize-build (not (ut-test-suite-summarize-build test-suite)))
+      (ut-draw-buffer-interactive))))
 
 (defun ut-quit ()
   "Quit ut mode and kill the buffer associated with it."
@@ -802,6 +852,8 @@ Display all test information if nil."
                       (f-join ut-conf-dir ut-conf-name)))
          (def (ut-parse-conf conf-file))
          (buffer-name (ut-buffer-name def)))
+    (with-current-buffer (get-buffer-create *ut-log-buffer*)
+      (read-only-mode))
     (with-current-buffer (get-buffer-create buffer-name)
       (ut-mode)
       (setq-local ut-conf def)
@@ -828,8 +880,9 @@ Display all test information if nil."
     (define-key map "b" 'ut-build-interactive)
     (define-key map "B" 'ut-build-all)
     (define-key map "t" 'ut-toggle)
-    (define-key map "g" 'ut-draw-buffer)
-    (define-key map [return] 'ut-toggle)
+    (define-key map "g" 'ut-draw-buffer-interactive)
+;    (define-key map "RET" 'ut-toggle)
+    (define-key map (kbd "TAB") 'ut-toggle)
     (define-key map "q" 'ut-quit)
     (define-key map "d" 'ut-debug-test-suite)
     (define-key map "v" 'ut-profile-test-suite)
