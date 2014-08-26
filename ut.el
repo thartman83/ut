@@ -205,8 +205,9 @@ Fields:
        PROJECT-DIR: root directory of the project
        TEST-DIR: root directory for the testing code
        FRAMEWORK: general testing framework for the project"
-  (interactive (let* ((c (read-file-name "Configuration file: "
-                                         (f-join default-directory ut-conf-name)))
+  (interactive (let* ((c (read-file-name "Configuration file: " default-directory
+                                         (f-join default-directory ut-conf-name) nil
+                                         ut-conf-name))
                       (p (read-string "Project name: "))
                       (d (read-directory-name "Project directory: " default-directory))
                       (td (read-directory-name "Test directory: " (f-join default-directory "tests")))
@@ -244,7 +245,7 @@ Fields:
     (ut-write-conf conf test-conf)
     (when (not (null (ut-framework-new-project-hook framework)))
       (funcall (ut-framework-new-project-hook framework) conf))
-    conf))
+    test-conf))
 
 (defun ut-parse-conf (test-conf-file)
   "Parse the TEST-CONF-FILE into a plist."
@@ -253,9 +254,9 @@ Fields:
       new-conf
       (error "'%s' does not specify a valid unit testing configuration" test-conf-file))))
 
-(defun ut-reset-conf ()
-  "Reset configuration to blank."
-  (setf ut-conf (make-hash-table)))
+(defun ut-reset-conf (conf)
+  "Reset CONF to blank."
+  (setf conf (make-hash-table)))
 
 (defun ut-write-conf (conf path)
   "Write CONF unit testing configuration to PATH."
@@ -376,9 +377,9 @@ RUN-COMMAND and RUN-FILTER, though they may be overriden."
             (if (null run-filter)
                 (ut-framework-run-filter framework)
               run-filter))
-    (ht-set (ut-test-suites conf) name new-suite)
     (when (not (null (ut-framework-new-test-suite-hook framework)))
       (funcall (ut-framework-new-test-suite-hook framework) new-suite conf))
+    (ht-set (ut-test-suites conf) name new-suite)
     new-suite))
 
 (defun ut-del-test-suite (conf name)
@@ -405,7 +406,7 @@ RUN-COMMAND and RUN-FILTER, though they may be overriden."
       (process-put process :finished t)
       (ht-set suite :build-status (funcall (ut-test-suite-build-filter suite)
                                            suite build-exit-status build-output))
-      (ut-draw-buffer))))
+      (ut-draw-buffer ut-conf))))
 
 (defun ut-run-process-filter (process output)
   "Handle run PROCESS OUTPUT."
@@ -421,7 +422,7 @@ RUN-COMMAND and RUN-FILTER, though they may be overriden."
       (process-put process :finished t)
       (ht-set suite :run-status (funcall (ut-test-suite-run-filter suite)
                                          suite run-exit-status run-output))
-      (ut-draw-buffer))))
+      (ut-draw-buffer ut-conf))))
 
 ;; Misc
 
@@ -622,19 +623,19 @@ https//github.com/flycheck/"
 
 ;; Drawing functions
 
-(defun ut-draw-buffer ()
+(defun ut-draw-buffer (conf)
   "Draw the complete unit testing buffer based on CONF."
   (interactive)
   (when (ut-buffer-p)
     (erase-buffer)
-    (ut-draw-header ut-conf)
+    (ut-draw-header conf)
     (insert "\n")
     (maphash #'(lambda (key test-suite)
                  (ut-draw-test-suite test-suite nil)
                  (insert "\n"))
-             (ut-test-suites ut-conf))
+             (ut-test-suites conf))
     (insert "\n")
-    (ut-draw-summary (ut-test-suites ut-conf))))
+    (ut-draw-summary (ut-test-suites conf))))
 
 (defun ut-draw-header (conf)
   "Draw the ut buffer header based on CONF at point."
@@ -803,7 +804,7 @@ Display all test information if nil."
       (when (not (f-directory? (ut-test-dir ut-conf)))
         (error "Test directory does not exist"))
       (cd (ut-test-dir ut-conf))
-      (ut-draw-buffer)
+      (ut-draw-buffer ut-conf)
       (switch-to-buffer buffer-name))))
 
 (defun ut-buffer-p ()

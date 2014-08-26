@@ -82,12 +82,22 @@
     :description: Definition of how tests are performed in a given type of testing harness
     :END:
 * Random
-** %project-dir% is not being expanded because it isn't part of the test-suite hashtable
-** ut-framework-new-test-suite-hook should probably take the ut-conf as well as the test-suite
-** ut-test-suite-p is looking for ut-test-suite-run-command to be defined as either a string of function
-** ut-draw-buffer and ut both use with-current-buffer, doesn't hurt anything but is redundent
-** ut-build-test-suite
+** TODO %project-dir% is not being expanded because it isn't part of the test-suite hashtable
+** TODO ut-framework-new-test-suite-hook should probably take the ut-conf as well as the test-suite
+** TODO ut-test-suite-p is looking for ut-test-suite-run-command to be defined as either a string of function
+** TODO ut-draw-buffer and ut both use with-current-buffer, doesn't hurt anything but is redundent
+** TODO ut-build-test-suite
 *** ut-buffer-p is not defined but called
 *** ut-get-test-suite-at-point is not defined but called
 *** interactive call dumps if not in ut-buffer, probably should ask for input from user instead
-** ut-draw-test-suite needs a lot of work, need to hash out summarize features as well as test-suite status
+** TODO ut-draw-test-suite needs a lot of work, need to hash out summarize features as well as test-suite status
+** TODO weird glitch in flycheck on ut-define-framework, functionp doesn't appear to be working, 
+   could be a temp file issue investigate further.
+** TODO adding a test asks for the framework, which it should just inherit from the conf
+** TODO adding AC_CONFIG_FILES for the test directory doesn't appear to be automatic for some reason
+** DONE new cunit tests don't add AC_CONFIG_FILES to configure.ac (tests/${TEST-SUITE}/Makefile, tests/${TEST-SUITE}/src/Makefile
+** TODO Makefile.am for new test uses absolute path with ~/ unexpanded, need to change to relative back path
+   Current solution is a bit hackish.
+** DONE Makefile.am in ${test-suite}/src/ using camel case instead of snake case for cunit
+** TODO Wrong path for cunit-sexp-outputer include and lib
+   
