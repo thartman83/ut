@@ -281,23 +281,23 @@ Fields:
 
 (defun ut-test-suite-name (test-suite)
   "Return the name associated with TEST-SUITE."
-  (gethash :test-name test-suite))
+  (ht-get test-suite :test-name))
 
 (defun ut-test-suite-test-dir (test-suite)
   "Return the test directory associated with TEST-SUITE."
-  (gethash :test-dir test-suite))
+  (ht-get test-suite :test-dir))
 
 (defun ut-test-suite-framework (test-suite)
   "Return the framework associated with TEST-SUITE."
-  (gethash :framework test-suite))
+  (ht-get test-suite :framework))
 
 (defun ut-test-suite-build-command (test-suite)
   "Return the build-command associated with TEST-SUITE."
-  (gethash :build-command test-suite))
+  (ht-get test-suite :build-command))
 
 (defun ut-test-suite-build-filter (test-suite)
   "Return the build-filter associated with TEST-SUITE."
-  (gethash :build-filter test-suite))
+  (ht-get test-suite :build-filter))
 
 (defun ut-test-suite-build-details (test-suite)
   "Return the build-details associated with TEST-SUITE."
@@ -318,19 +318,19 @@ Default is true."
 
 (defun ut-test-suite-run-command (test-suite)
   "Return the run-command associated with TEST-SUITE."
-  (gethash :run-command test-suite))
+  (ht-get test-suite :run-command))
 
 (defun ut-test-suite-run-filter (test-suite)
   "Return the run-filter associated with TEST-SUITE."
-  (gethash :run-filter test-suite 'not-run))
+  (ht-get test-suite :run-filter 'not-run))
 
 (defun ut-test-suite-run-status (test-suite)
   "Return the return value from the last time the TEST-SUITE was run."
-  (gethash :run-status test-suite))
+  (ht-get test-suite :run-status))
 
 (defun ut-test-suite-result (test-suite)
   "Return the result from the last time TEST-SUITE was run."
-  (gethash :result test-suite))
+  (ht-get test-suite :result '()))
 
 (defun ut-test-suite-result-summary (test-suite)
   "Return the summary result of the last run of TEST-SUITE.
@@ -338,11 +338,13 @@ Default is true."
 If any tests within TEST-SUITE fail, the summary result is 'failed.
 If any tests within TEST-SUITE error, the summary result is 'error.
 If all tests pass within TEST-SUITE, the summary result is 'passed."
-  (let ((results (mapcar #'(lambda (test) (second test))
-                         (ut-test-suite-result test-suite))))
-    (cond ((member 'failed results) 'failed)
-          ((member 'error results) 'error)
-          (t 'passed))))
+  (if (null (ut-test-suite-result test-suite))
+      'not-run
+      (let ((results (mapcar #'(lambda (test) (second test))
+                             (ut-test-suite-result test-suite))))
+        (cond ((member 'failed results) 'failed)
+              ((member 'error results) 'error)
+              (t 'passed)))))
 
 (defun ut-get-test-suite (conf name)
   "Return test suite from CONF with NAME."
@@ -694,7 +696,6 @@ Display all test information if nil."
     (insert (mapconcat #'(lambda (line) (format "\t%s\n" line))
                        (split-string (ut-test-suite-build-details test-suite) "\n")
                        ""))))
-;(mapc #'(lambda (test) (ut-draw-test test)) (ut-test-suite-result test-suite))
 
 (defun ut-draw-test (test)
   "Draw TEST to current buffer at point."

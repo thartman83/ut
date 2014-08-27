@@ -86,7 +86,7 @@
 ** TODO ut-framework-new-test-suite-hook should probably take the ut-conf as well as the test-suite
 ** TODO ut-test-suite-p is looking for ut-test-suite-run-command to be defined as either a string of function
 ** TODO ut-draw-buffer and ut both use with-current-buffer, doesn't hurt anything but is redundent
-** TODO ut-build-test-suite
+** DONE ut-build-test-suite
 *** ut-buffer-p is not defined but called
 *** ut-get-test-suite-at-point is not defined but called
 *** interactive call dumps if not in ut-buffer, probably should ask for input from user instead
@@ -114,3 +114,4 @@
    for the moment just turn off yas-minor-mode to resolve
 ** DONE Build details are in reverse order
    title pretty much says it all doesn't it
+** TODO Running test
