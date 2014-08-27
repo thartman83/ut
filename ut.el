@@ -164,8 +164,7 @@ Returns nil if the file does not exist."
   (let ((inhibit-read-only t))
     (with-current-buffer (get-buffer-create *ut-log-buffer*)
       (goto-char (point-max))
-      (insert (apply #'format (cons msg args))))))
-
+      (insert (format "* %s" (apply #'format (cons msg args)))))))
 
 ;; Functions to read, write and manipulate the ut configuration file
 
@@ -762,12 +761,9 @@ Display all test information if nil."
 
 (defun ut-build-test-suite (conf test-suite)
   "Build CONF/TEST-SUITE, parse the output and update the compilation status."
-  (interactive (list
-                (if (ut-buffer-p) ut-conf nil)
-                (if (ut-buffer-p) (ut-get-test-suite-at-point) nil)))
   (when (not (ut-test-suite-p conf test-suite))
     (error "Could not find test suite '%s' to build" (ut-test-suite-name test-suite)))
-  (ut-log-message "Building test-suite `%s' with command `%s': \n"
+  (ut-log-message "Building test-suite `%s' with command `%s'\n"
                   (ut-test-suite-name test-suite)
                   (ut-test-suite-build-command test-suite))
   (let* ((process-name (concat "build-" (ut-test-suite-name test-suite)))
@@ -781,9 +777,10 @@ Display all test information if nil."
     (set-process-sentinel process #'ut-build-process-sentinel)
     (set-process-query-on-exit-flag process nil)))
 
-(defun ut-build-all ()
-  "Build all of the test suites defined in ut definition."
-  (error "Not Implemented"))
+(defun ut-build-all (conf)
+  "Build all of the test suites defined in CONF."
+  (mapc #'(lambda (test-suite) (ut-build-test-suite conf test-suite))
+        (ut-test-suites conf)))
 
 (defun ut-toggle ()
   "Toggle the narrowing/widening of the context sensitive region."
@@ -837,6 +834,13 @@ Display all test information if nil."
       (error "No test suite at point"))
     (ut-build-test-suite ut-conf test-suite)))
 
+(defun ut-build-all-interactive ()
+  "Interactive version of ut-build-all."
+  (interactive)
+  (when (not (ut-buffer-p))
+    (error "Not in UT buffer"))
+  (ut-build-all ut-conf))
+
 ;; Main entry function and mode defuns
 
 (defun ut ()
@@ -879,7 +883,7 @@ Display all test information if nil."
     (define-key map "r" 'ut-run-test-suite)
     (define-key map "R" 'ut-run-all)
     (define-key map "b" 'ut-build-interactive)
-    (define-key map "B" 'ut-build-all)
+    (define-key map "B" 'ut-build-all-interactive)
     (define-key map "t" 'ut-toggle)
     (define-key map "g" 'ut-draw-buffer-interactive)
 ;    (define-key map "RET" 'ut-toggle)

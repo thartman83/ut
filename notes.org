@@ -114,4 +114,5 @@
    for the moment just turn off yas-minor-mode to resolve
 ** DONE Build details are in reverse order
    title pretty much says it all doesn't it
+** DONE Build all doesn't work
 ** TODO Running test
