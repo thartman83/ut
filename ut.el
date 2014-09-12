@@ -207,7 +207,49 @@ Returns nil if the file does not exist."
                      (ht-values (ut-test-suites conf)))) nil)
         (t t)))
 
-;; creation and manipulation
+(defun ut-test-result-p (result)
+  "Return t if RESULT is a valid unit test suite result hash table, nil otherwise."
+  (cond ((not (ht? result)) nil)
+        ((or (not (ht-contains? result :start-time))
+             (not (stringp (ht-get result :start-time))))
+         nil)
+        ((or (not (ht-contains? result :end-time))
+             (not (stringp (ht-get result :end-time))))
+         nil)
+        ((or (not (ht-contains? result :test-suites))
+             (not (listp (ht-get result :test-suites)))
+             (not (-all? #'ut-test-suite-result-p (ht-get result :test-suites))))
+         nil)
+        (t t)))
+
+(defun ut-test-suite-result-p (result)
+  "Return t if RESULT is a valid unit test result hash table, nil otherwise."
+  (cond ((not (ht? result)) nil)
+        ((or (not (ht-contains? result :name))
+             (not (stringp (ht-get result :name))))
+         nil)
+        ((or (not (ht-contains? result :status))
+             (not (symbolp (ht-get result :status)))
+             (not (member (ht-get result :status) '(success failure error))))
+         nil)
+        ((or (not (ht-contains? result :tests))
+             (not (listp (ht-get result :tests)))
+             (not (-all? #'(lambda (test)
+                             (cond
+                              ((not (ht? test)) nil)
+                              ((or (not (ht-contains? test :name))
+                                   (not (stringp (ht-get test :name))))
+                               nil)
+                              ((or (not (ht-contains? test :status))
+                                   (not (symbolp (ht-get test :status)))
+                                   (not (member (ht-get test :status) '(success failure error))))
+                               nil)
+                              (t t)))
+                         (ht-get result :tests))))
+         nil)
+        (t t)))
+
+;; creation and manipulation functions
 
 (defun ut-new-conf (test-conf project-name project-dir test-dir framework)
   "Interactively ask user for the fields to fill TEST-CONF with.
@@ -290,6 +332,8 @@ Fields:
   "Return the framework associated with TEST-SUITE."
   (ht-get test-suite :framework))
 
+;; Accessor functions to various build values and variables
+
 (defun ut-test-suite-build-command (test-suite)
   "Return the build-command associated with TEST-SUITE."
   (ht-get test-suite :build-command))
@@ -315,6 +359,8 @@ Fields:
 Default is true."
   (ht-get test-suite :summarize-build t))
 
+;; Accessor Functions to various run values and variables
+
 (defun ut-test-suite-run-command (test-suite)
   "Return the run-command associated with TEST-SUITE."
   (ht-get test-suite :run-command))
@@ -323,13 +369,42 @@ Default is true."
   "Return the run-filter associated with TEST-SUITE."
   (ht-get test-suite :run-filter 'not-run))
 
+(defun ut-test-suite-run-time (test-suite)
+  "Return the run-time associated with TEST-SUITE."
+  (ht-get test-suite :run-time ""))
+
 (defun ut-test-suite-run-status (test-suite)
   "Return the return value from the last time the TEST-SUITE was run."
   (ht-get test-suite :run-status))
 
+(defun ut-test-suite-summarize-run (test-suite)
+  "Return whether to summarize the run information associated with TEST-SUITE.
+Default is true."
+  (ht-get test-suite :summarize-run t))
+
 (defun ut-test-suite-result (test-suite)
   "Return the result from the last time TEST-SUITE was run."
   (ht-get test-suite :result '()))
+
+;; Accessor Functions to various line number values for the test-suite
+
+(defun ut-test-suite-start-line (test-suite)
+  (ht-get test-suite :start-line 0))
+
+(defun ut-test-suite-end-line (test-suite)
+  (ht-get test-suite :end-line 0))
+
+(defun ut-test-suite-build-start-line (test-suite)
+  (ht-get test-suite :build-start-line 0))
+
+(defun ut-test-suite-build-end-line (test-suite)
+  (ht-get test-suite :build-end-line 0))
+
+(defun ut-test-suite-run-start-line (test-suite)
+  (ht-get test-suite :run-start-line 0))
+
+(defun ut-test-suite-run-end-line (test-suite)
+  (ht-get test-suite :run-end-line 0))
 
 (defun ut-test-suite-result-summary (test-suite)
   "Return the summary result of the last run of TEST-SUITE.
@@ -447,8 +522,7 @@ RUN-COMMAND and RUN-FILTER, though they may be overriden."
           (run-exit-status (process-exit-status process))
           (suite (process-get process :test-suite)))
       (process-put process :finished t)
-      (ht-set suite :run-status (funcall (ut-test-suite-run-filter suite)
-                                         suite run-exit-status run-output))
+      (funcall (ut-test-suite-run-filter suite) suite run-exit-status run-output)
       (ut-draw-buffer ut-conf))))
 
 ;; Misc
@@ -692,9 +766,21 @@ Display all test information if nil."
                         (t "Unknown Build Status"))
                   (ut-test-suite-build-time test-suite)))
   (when (not (ut-test-suite-summarize-build test-suite))
-    (insert (mapconcat #'(lambda (line) (format "\t%s\n" line))
+    (insert (mapconcat #'(lambda (line) (format "\t\t%s\n" line))
                        (split-string (ut-test-suite-build-details test-suite) "\n")
-                       ""))))
+                       "")))
+  (insert (format "\t%s Run Status: %s [%s]\n"
+                  (if (ut-test-suite-summarize-run test-suite) "+" "-")
+                  (cond ((null (ut-test-suite-run-status test-suite))
+                         "Not Run")
+                        ((eq (ut-test-suite-run-status test-suite) 'success)
+                         (propertize "Succeeded" 'face 'ut-succeeded-face))
+                        ((eq (ut-test-suite-run-status test-suite) 'failure)
+                         (propertize "Failed" 'face 'ut-error-face))
+                        ((eq (ut-test-suite-run-status test-suite) 'error)
+                         (propertize "Error" 'face 'ut-error-face))
+                        (t "Unknown Run Status"))
+                  (ut-test-suite-run-time test-suite))))
 
 (defun ut-draw-test (test)
   "Draw TEST to current buffer at point."
@@ -739,12 +825,14 @@ Display all test information if nil."
 
 (defun ut-run-test-suite (conf test-suite)
   "Run CONF/TEST-SUITE, parse the output and update the result."
-  (interactive (list
-                (if (ut-buffer-p) ut-conf nil)
-                (if (ut-buffer-p) (ut-get-test-suite-at-point) nil)))
   (when (not (ut-test-suite-p conf test-suite))
     (error "Could not find test suite '%s' to run" (ut-test-suite-name test-suite)))
-  (let* ((process-name (concat "run-" (ut-test-suite-name test-suite)))
+  (ut-log-message "Running test-suite `%s' with command `%s'\n"
+                  (ut-test-suite-name test-suite)
+                  (ut-test-suite-run-command test-suite))
+  (let* ((exec-path (cons (f-join (ut-test-dir conf) (ut-test-suite-test-dir test-suite))
+                          exec-path))
+         (process-name (concat "run-" (ut-test-suite-name test-suite)))
          (process-command (split-string (ut-test-suite-run-command test-suite) " "))
          (process (apply #'start-process (append (list process-name (current-buffer)
                                                        (car process-command))
@@ -755,9 +843,10 @@ Display all test information if nil."
     (set-process-sentinel process #'ut-run-process-sentinel)
     (set-process-query-on-exit-flag process nil)))
 
-(defun ut-run-all ()
-  "Run all of the test suites defined in ut definition."
-  (error "Not implemented"))
+(defun ut-run-all (conf)
+  "Run all of the test suites defined in CONF."
+  (ht-each #'(lambda (key test-suite) (ut-run-test-suite conf test-suite))
+           (ut-test-suites conf)))
 
 (defun ut-build-test-suite (conf test-suite)
   "Build CONF/TEST-SUITE, parse the output and update the compilation status."
@@ -779,8 +868,8 @@ Display all test information if nil."
 
 (defun ut-build-all (conf)
   "Build all of the test suites defined in CONF."
-  (mapc #'(lambda (test-suite) (ut-build-test-suite conf test-suite))
-        (ut-test-suites conf)))
+  (ht-each #'(lambda (key test-suite) (ut-build-test-suite conf test-suite))
+           (ut-test-suites conf)))
 
 (defun ut-toggle ()
   "Toggle the narrowing/widening of the context sensitive region."
@@ -790,7 +879,10 @@ Display all test information if nil."
     (let ((test-suite (ut-get-test-suite-at-point)))
       (when (null test-suite)
         (error "No test suite at point"))
-      (ht-set! test-suite :summarize-build (not (ut-test-suite-summarize-build test-suite)))
+      (when (ut-point-in-test-suite-build? test-suite)
+        (ht-set! test-suite :summarize-build (not (ut-test-suite-summarize-build test-suite))))
+      (when (ut-point-in-test-suite-run? test-suite)
+        (ht-set! test-suite :summarize-run (not (ut-test-suite-summarize-run test-suite))))
       (ut-draw-buffer-interactive))))
 
 (defun ut-quit ()
@@ -812,17 +904,53 @@ Display all test information if nil."
   (interactive)
   (when (not (ut-buffer-p))
     (error "Not in a UT buffer"))
-  (save-excursion
-    (beginning-of-line)
-    (let ((found nil))
-      (while (and (not (= (1+ (count-lines 1 (point))) 1)) (null found))
-        (when (and (string-match "^\\(.*\\):" (buffer-substring (point) (line-end-position)))
-                   (eq (get-text-property (point) 'face) 'ut-test-suite-name))
-          (let ((name (buffer-substring-no-properties (point) (1- (+ (point) (match-end 0))))))
-            (when (ut-test-suite-exists-p ut-conf name)
-              (setf found (ut-get-test-suite ut-conf name)))))
-        (previous-line))
-      found)))
+  (ut-calculate-test-suite-regions ut-conf)
+  (let ((retval nil))
+    (maphash #'(lambda (name test-suite)
+                 (when (and (>= (line-number-at-pos) (ut-test-suite-start-line test-suite))
+                          (<= (line-number-at-pos) (ut-test-suite-end-line test-suite)))
+                   (setf retval test-suite)))
+             (ut-test-suites ut-conf))
+    retval))
+
+(defun ut-point-in-test-suite-build? (test-suite)
+  "Return t if point is on the Build Status line or in an expanded Build Status region."
+  (interactive)
+  (when (not (ut-buffer-p))
+    (error "Not in a UT Buffer"))
+  (and (>= (line-number-at-pos) (ut-test-suite-build-start-line test-suite))
+       (<= (line-number-at-pos) (ut-test-suite-build-end-line test-suite))))
+
+(defun ut-point-in-test-suite-run? (test-suite)
+  "Return t if point is on the Run Status line or in an expanded Run Status region."
+  (interactive)
+  (when (not (ut-buffer-p))
+    (error "Not in a UT Buffer"))
+  (and (>= (line-number-at-pos) (ut-test-suite-run-start-line test-suite))
+       (<= (line-number-at-pos) (ut-test-suite-run-end-line test-suite))))
+
+(defun ut-calculate-test-suite-regions (conf)
+  "CONF"
+  (let ((current-line 3))
+    (maphash #'(lambda (name test-suite)
+                 (ht-set! test-suite :start-line current-line)
+                 (incf current-line)
+                 (ht-set! test-suite :build-start-line current-line)
+                 (incf current-line 
+                       (if (ut-test-suite-summarize-build test-suite) 
+                           0
+                         (length (split-string (ut-test-suite-build-details test-suite) "\n"))))
+                 (ht-set! test-suite :build-end-line current-line)
+                 (incf current-line)
+                 (ht-set! test-suite :run-start-line current-line)
+                 (incf current-line 
+                       (if (ut-test-suite-summarize-run test-suite)
+                           0
+                         0))
+                 (ht-set! test-suite :run-end-line current-line)
+                 (ht-set! test-suite :end-line current-line)
+                 (incf current-line 2))             
+             (ut-test-suites conf))))
 
 (defun ut-build-interactive ()
   "Interactive version of ut-build-test-suite.  Build CONF/TEST-SUITE."
@@ -840,6 +968,16 @@ Display all test information if nil."
   (when (not (ut-buffer-p))
     (error "Not in UT buffer"))
   (ut-build-all ut-conf))
+
+(defun ut-run-interactive ()
+  "Interactive version of ut-run-test-suite."
+  (interactive)
+  (when (not (ut-buffer-p))
+    (error "Not in UT buffer"))
+  (let ((test-suite (ut-get-test-suite-at-point)))
+    (when (null test-suite)
+      (error "No test suite at point"))
+    (ut-run-test-suite ut-conf test-suite)))
 
 ;; Main entry function and mode defuns
 
@@ -879,14 +1017,13 @@ Display all test information if nil."
   (let ((map (make-sparse-keymap)))
     (suppress-keymap map t)
     (define-key map "a" 'ut-add-test-suite)
-    (define-key map "d" 'ut-delete-test-suite)
-    (define-key map "r" 'ut-run-test-suite)
+    (define-key map "x" 'ut-delete-test-suite)
+    (define-key map "r" 'ut-run-interactive)
     (define-key map "R" 'ut-run-all)
     (define-key map "b" 'ut-build-interactive)
     (define-key map "B" 'ut-build-all-interactive)
     (define-key map "t" 'ut-toggle)
     (define-key map "g" 'ut-draw-buffer-interactive)
-;    (define-key map "RET" 'ut-toggle)
     (define-key map (kbd "TAB") 'ut-toggle)
     (define-key map "q" 'ut-quit)
     (define-key map "d" 'ut-debug-test-suite)

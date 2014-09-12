@@ -81,6 +81,20 @@
     :PROPERTIES:
     :description: Definition of how tests are performed in a given type of testing harness
     :END:
+*** test-suite-results
+**** Structure
+     - Hash Table with the following symbolic keys
+       - :start-time ~ string
+       - :end-time ~ string
+       - :name ~ string
+       - :test ~ list of test-results
+*** test-results
+**** Structure
+     - Hash table with the following symbolic key
+       - :name ~ string
+       - :status ~ symbol of the following values: '(succeeded failed error not-run unknown)
+       - :output ~ string
+       - :assertions ~ optional list of assertion-results
 * Random
 ** TODO %project-dir% is not being expanded because it isn't part of the test-suite hashtable
 ** TODO ut-framework-new-test-suite-hook should probably take the ut-conf as well as the test-suite
