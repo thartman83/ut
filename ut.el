@@ -133,6 +133,11 @@
   :type 'hook
   :risky t)
 
+(defcustom ut-datetime-string "%Y-%m-%d %H:%M:%S"
+  "Default datetime string."
+  :group 'ut
+  :type 'string)
+
 ;; Vars and consts
 
 (defvar ut-frameworks nil
@@ -369,9 +374,13 @@ Default is true."
   "Return the run-filter associated with TEST-SUITE."
   (ht-get test-suite :run-filter 'not-run))
 
+(defun ut-test-suite-run-details (test-suite)
+  "Return the run details associated with TEST-SUITE."
+  (ht-get test-suite :run-details nil))
+
 (defun ut-test-suite-run-time (test-suite)
   "Return the run-time associated with TEST-SUITE."
-  (ht-get test-suite :run-time ""))
+  (ht-get test-suite :run-end-time ""))
 
 (defun ut-test-suite-run-status (test-suite)
   "Return the return value from the last time the TEST-SUITE was run."
@@ -389,21 +398,27 @@ Default is true."
 ;; Accessor Functions to various line number values for the test-suite
 
 (defun ut-test-suite-start-line (test-suite)
+  "Return the first line number of TEST-SUITE in the ut buffer."
   (ht-get test-suite :start-line 0))
 
 (defun ut-test-suite-end-line (test-suite)
+  "Return the last line number of TEST-SUITE in the ut buffer."
   (ht-get test-suite :end-line 0))
 
 (defun ut-test-suite-build-start-line (test-suite)
+  "Return the first line number of the build section of TEST-SUITE."
   (ht-get test-suite :build-start-line 0))
 
 (defun ut-test-suite-build-end-line (test-suite)
+  "Return the last line number of the build section of TEST-SUITE."
   (ht-get test-suite :build-end-line 0))
 
 (defun ut-test-suite-run-start-line (test-suite)
+  "Return the first line number of the run section of TEST-SUITE."
   (ht-get test-suite :run-start-line 0))
 
 (defun ut-test-suite-run-end-line (test-suite)
+  "Return the last line number of the run section of TEST-SUITE."
   (ht-get test-suite :run-end-line 0))
 
 (defun ut-test-suite-result-summary (test-suite)
@@ -506,7 +521,7 @@ RUN-COMMAND and RUN-FILTER, though they may be overriden."
           (build-exit-status (process-exit-status process))
           (suite (process-get process :test-suite)))
       (process-put process :finished t)
-      (ht-set suite :build-time (current-time-string))
+      (ht-set suite :build-time (format-time-string ut-datetime-string))
       (funcall (ut-test-suite-build-filter suite) suite build-exit-status build-output)
       (ut-draw-buffer ut-conf))))
 
@@ -738,7 +753,8 @@ https//github.com/flycheck/"
                (ut-test-suites conf))
       (insert "\n")
       (ut-draw-summary (ut-test-suites conf))
-      (goto-line line-number))))
+      (goto-line line-number)
+      (ut-write-conf conf (f-join (ut-project-dir conf) ut-conf-name)))))
 
 (defun ut-draw-buffer-interactive ()
   "Draw the complete unit testing buffer based on the local buffer variable ut-conf."
@@ -780,7 +796,19 @@ Display all test information if nil."
                         ((eq (ut-test-suite-run-status test-suite) 'error)
                          (propertize "Error" 'face 'ut-error-face))
                         (t "Unknown Run Status"))
-                  (ut-test-suite-run-time test-suite))))
+                  (ut-test-suite-run-time test-suite)))
+  (when (not (ut-test-suite-summarize-run test-suite))
+    (insert (mapconcat #'(lambda (test) 
+                           (format "\t\t* %s: %s\n" (ht-get test :name) 
+                                   (cond 
+                                    ((eq (ht-get test :status) 'success)
+                                     (propertize "Succeeded" 'face 'ut-succeeded-face))
+                                    ((eq (ht-get test :status) 'failure)
+                                     (propertize "Failed" 'face 'ut-error-face))
+                                    ((eq (ht-get test :status) 'error)
+                                     (propertize "Error" 'face 'ut-error-face))
+                                    (t "Unknown"))))
+                       (ut-test-suite-run-details test-suite) ""))))
 
 (defun ut-draw-test (test)
   "Draw TEST to current buffer at point."
@@ -816,7 +844,6 @@ Display all test information if nil."
                        (make-directory (f-join (ut-test-dir c) d))
                      (error "Aborting")))
                  (list c (ut-new-test-suite c n d f))))
-  (ut-write-conf conf (f-join (ut-project-dir conf) ut-conf-name))
   (ut-draw-buffer conf))
 
 (defun ut-delete-test-suite (test-suite)
@@ -946,7 +973,7 @@ Display all test information if nil."
                  (incf current-line 
                        (if (ut-test-suite-summarize-run test-suite)
                            0
-                         0))
+                         (length (ut-test-suite-run-details test-suite))))
                  (ht-set! test-suite :run-end-line current-line)
                  (ht-set! test-suite :end-line current-line)
                  (incf current-line 2))             
