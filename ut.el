@@ -819,10 +819,10 @@ Display all test information if nil."
 
 (defun ut-draw-summary (test-suites)
   "Draw the summarized result of the list of TEST-SUITES."
-  (let* ((test-results (ht-map #'(lambda (key val) (ut-test-suite-result-summary val)) test-suites))
-         (passed (count-if #'(lambda (result) (eq result 'passed)) test-results))
-         (failed (count-if #'(lambda (result) (eq result 'failed)) test-results))
-         (errored (count-if #'(lambda (result) (eq result 'error)) test-results)))
+  (let* ((suites (ht-map #'(lambda (key val) val) test-suites))
+         (passed (-count #'(lambda (suite) (eq (ut-test-suite-run-status suite) 'success)) suites))
+         (failed (-count #'(lambda (suite) (eq (ut-test-suite-run-status suite) 'failure)) suites))
+         (errored (-count #'(lambda (suite) (eq (ut-test-suite-run-status suite) 'error)) suites)))
     (insert (format "Total Passed: %d Total Failed: %d Total Errors: %d\n"
                     passed failed errored))))
 
@@ -1006,6 +1006,13 @@ Display all test information if nil."
       (error "No test suite at point"))
     (ut-run-test-suite ut-conf test-suite)))
 
+(defun ut-run-all-interactive ()
+  "Interactive version of ut-run-all."
+  (interactive)
+  (when (not (ut-buffer-p))
+    (error "Not in UT buffer"))
+  (ut-run-all ut-conf))
+
 ;; Main entry function and mode defuns
 
 (defun ut ()
@@ -1046,15 +1053,15 @@ Display all test information if nil."
     (define-key map "a" 'ut-add-test-suite)
     (define-key map "x" 'ut-delete-test-suite)
     (define-key map "r" 'ut-run-interactive)
-    (define-key map "R" 'ut-run-all)
+    (define-key map "R" 'ut-run-all-interactive)
     (define-key map "b" 'ut-build-interactive)
     (define-key map "B" 'ut-build-all-interactive)
     (define-key map "t" 'ut-toggle)
     (define-key map "g" 'ut-draw-buffer-interactive)
     (define-key map (kbd "TAB") 'ut-toggle)
     (define-key map "q" 'ut-quit)
-    (define-key map "d" 'ut-debug-test-suite)
-    (define-key map "v" 'ut-profile-test-suite)
+;    (define-key map "d" 'ut-debug-test-suite)
+;    (define-key map "v" 'ut-profile-test-suite)
     map)
   "Keymap for ut-mode.")
 

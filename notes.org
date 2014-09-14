@@ -110,7 +110,7 @@
 ** DONE adding a test asks for the framework, which it should just inherit from the conf
 ** DONE adding AC_CONFIG_FILES for the test directory doesn't appear to be automatic for some reason
 ** DONE new cunit tests don't add AC_CONFIG_FILES to configure.ac (tests/${TEST-SUITE}/Makefile, tests/${TEST-SUITE}/src/Makefile
-** TODO Makefile.am for new test uses absolute path with ~/ unexpanded, need to change to relative back path
+** DONE Makefile.am for new test uses absolute path with ~/ unexpanded, need to change to relative back path
    Current solution is a bit hackish.
 ** DONE Makefile.am in ${test-suite}/src/ using camel case instead of snake case for cunit
 ** DONE Wrong path for cunit-sexp-outputer include and lib
@@ -129,4 +129,9 @@
 ** DONE Build details are in reverse order
    title pretty much says it all doesn't it
 ** DONE Build all doesn't work
-** TODO Running test
+** DONE Running test
+** TODO Need to change the syntax for new test-suites from "add" to "new" 
+        move the command key to 'n' and using 'a' for adding new tests
+        to a test suite, will likely need to modify the ut-framework
+        to include new defcustoms to facilitate adding new tests to
+        existing test-suites 
