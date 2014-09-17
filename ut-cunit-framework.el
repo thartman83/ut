@@ -21,7 +21,6 @@
 
 (require 'dash)
 (require 'ht)
-(require 'atu)
 (require 'ut)
 (require 'ut-common-framework)
 
@@ -166,9 +165,9 @@ CU_pSuite %test-name%_test_suite()
     ;; Setup the directory structure
     (ut-cunit-create-test-suite-subdirs dir)
     ;; Setup default build/autotools files
-    (atu-add-makefile.am-subdir (ut-test-suite-test-dir test-suite)
+    (ut-add-makefile.am-subdir (ut-test-suite-test-dir test-suite)
                                 (f-join (ut-test-dir conf) "Makefile.am"))
-    (atu-add-ac-config-files (f-relative (ut-test-suite-test-dir test-suite) (ut-project-dir conf))
+    (ut-add-ac-config-files (f-relative (ut-test-suite-test-dir test-suite) (ut-project-dir conf))
                              (f-join (ut-project-dir conf) "configure.ac"))
     (f-write-text top-makefile.am-text 'utf-8 (f-join dir "Makefile.am"))
     (f-write-text src-makefile.am-text 'utf-8 (f-join dir "src/Makefile.am"))
@@ -193,7 +192,7 @@ CU_pSuite %test-name%_test_suite()
   "Setup testing folders for a new project defined in CONF."
   (unless (f-exists? (ut-test-dir conf))
     (make-directory (ut-test-dir conf)))
-  (atu-add-makefile.am-subdir (f-relative (ut-test-dir conf) (ut-project-dir conf))
+  (ut-add-makefile.am-subdir (f-relative (ut-test-dir conf) (ut-project-dir conf))
                               (f-join (ut-project-dir conf) "Makefile.am"))
   (f-write-text "SUBDIRS = " 'utf-8 (f-join (ut-test-dir conf) "Makefile.am")))
 
@@ -232,5 +231,5 @@ CU_pSuite %test-name%_test_suite()
 ;;; ut-cunit-framework.el ends here
 
 ;; Local Variables:
-;; eval: (setq flycheck-emacs-lisp-load-path (append load-path (list "/home/thartman/projects/atu" "/home/thartman/projects/ut")))
+;; eval: (setq flycheck-emacs-lisp-load-path (append load-path (list "/home/thartman/projects/ut")))
 ;; End:

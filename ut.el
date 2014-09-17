@@ -957,7 +957,7 @@ Display all test information if nil."
        (<= (line-number-at-pos) (ut-test-suite-run-end-line test-suite))))
 
 (defun ut-calculate-test-suite-regions (conf)
-  "CONF"
+  "Calculate the beginning and endings of each test suite in CONF."
   (let ((current-line 3))
     (maphash #'(lambda (name test-suite)
                  (ht-set! test-suite :start-line current-line)
