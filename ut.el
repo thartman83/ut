@@ -46,6 +46,20 @@
 (require 'f)
 (require 'ht)
 
+;; Groups
+
+(defgroup ut nil
+  "Emacs integration for c/c++ unit testing"
+  :prefix "ut-"
+  :group 'tools
+  :link '(url-link :tag "Online manual" "ut.keyboardsmasher.com")
+  :link '(url-link :tag "Github" "https://github.com/rokstar83/ut-mode"))
+
+(defgroup ut-faces nil
+  "Faces for ut"
+  :prefix "ut-"
+  :group 'ut)
+
 ;; Faces
 
 (defface ut-header-label
@@ -104,20 +118,6 @@
   "Face for skipped result"
   :group 'ut)
 
-;; Groups
-
-(defgroup ut nil
-  "Emacs integration for c/c++ unit testing"
-  :prefix "ut-"
-  :group 'tools
-  :link '(url-link :tag "Online manual" "ut.keyboardsmasher.com")
-  :link '(url-link :tag "Github" "https://github.com/rokstar83/ut-mode"))
-
-(defgroup ut-faces nil
-  "Faces for ut"
-  :prefix "ut-"
-  :group 'ut)
-
 ;; Customs
 
 (defcustom ut-locate-functions
@@ -149,7 +149,7 @@
 (defvar ut-buffer-name-template "*UT %s*"
   "Template for ut buffers.")
 
-(defvar *ut-log-buffer* "*UT Log*"
+(defvar ut-log-buffer "*UT Log*"
   "Name of the buffer for logging UT mode messages.")
 
 ;; Misc helper functions
@@ -167,7 +167,7 @@ Returns nil if the file does not exist."
 (defun ut-log-message (msg &rest args)
   "Log MSG with format ARGS to the ut log buffer."
   (let ((inhibit-read-only t))
-    (with-current-buffer (get-buffer-create *ut-log-buffer*)
+    (with-current-buffer (get-buffer-create ut-log-buffer)
       (goto-char (point-max))
       (insert (format "* %s" (apply #'format (cons msg args)))))))
 
@@ -507,6 +507,10 @@ RUN-COMMAND and RUN-FILTER, though they may be overriden."
   (ht-remove (ut-test-suites conf) name)
   nil)
 
+(defun ut-new-test (conf test-name test-suite)
+  "Based on CONF, add TEST-NAME to TEST-SUITE."
+  (funcall (ut-framework-new-test-hook (ut-project-framework conf)) conf test-name test-suite))
+
 ;; test-suite process functions
 
 (defun ut-build-process-filter (process output)
@@ -583,6 +587,7 @@ https//github.com/flycheck/"
         (run-command (plist-get properties :run-command))
         (run-filter (plist-get properties :run-filter))
         (new-test-suite-hook (plist-get properties :new-test-suite))
+        (new-test-hook (plist-get properties :new-test))
         (new-project-hook (plist-get properties :new-project)))
     (unless (or (null build-command)
                 (stringp build-command)
@@ -638,6 +643,12 @@ https//github.com/flycheck/"
          :type 'hook
          :group 'ut
          :risky t)
+       (defcustom ,(intern (format "ut-%s-new-test-hook" (symbol-name framework)))
+         ,new-test-hook
+         "Hook to run when creating a new test"
+         :type 'hook
+         :group 'ut
+         :risky t)
        (defcustom ,(intern (format "ut-%s-new-project-hook" (symbol-name framework)))
          ,new-project-hook
          "Hook to run when tests are initially setup for a project"
@@ -688,6 +699,12 @@ https//github.com/flycheck/"
   "Return the new-test-suite-hook associated with FRAMEWORK, nil if FRAMEWORK DNE."
   (condition-case nil
       (symbol-value (intern (format "ut-%s-new-test-suite-hook" framework)))
+    (error nil)))
+
+(defun ut-framework-new-test-hook (framework)
+  "Return the new-test-hook associated with FRAMEWORK, nil if FRAMEWORK DNE."
+  (condition-case nil
+      (symbol-value (intern (format "ut-%s-new-test-hook" framework)))
     (error nil)))
 
 (defun ut-framework-new-project-hook (framework)
@@ -979,6 +996,18 @@ Display all test information if nil."
                  (incf current-line 2))             
              (ut-test-suites conf))))
 
+(defun ut-new-test-interactive (test-name test-suite)
+  "Add a TEST-NAME to the current TEST-SUITE."
+  (interactive (let* ((ts (ut-get-test-suite-at-point))
+                      (tn (if (null ts) 
+                              (error "No test suite at point")
+                            (read-string (format "Test to add to %s test suite: " (ut-test-suite-name ts))
+                                         "test_"))))
+                 (list tn ts)))
+  (when (not (ut-buffer-p))
+    (error "Not in UT buffer"))
+  (ut-new-test ut-conf test-name test-suite))
+
 (defun ut-build-interactive ()
   "Interactive version of ut-build-test-suite.  Build CONF/TEST-SUITE."
   (interactive)
@@ -1029,7 +1058,7 @@ Display all test information if nil."
                       (f-join ut-conf-dir ut-conf-name)))
          (def (ut-parse-conf conf-file))
          (buffer-name (ut-buffer-name def)))
-    (with-current-buffer (get-buffer-create *ut-log-buffer*)
+    (with-current-buffer (get-buffer-create ut-log-buffer)
       (read-only-mode))
     (with-current-buffer (get-buffer-create buffer-name)
       (ut-mode)
@@ -1050,6 +1079,7 @@ Display all test information if nil."
 (defvar ut-mode-map
   (let ((map (make-sparse-keymap)))
     (suppress-keymap map t)
+    (define-key map "n" 'ut-new-test-interactive)
     (define-key map "a" 'ut-add-test-suite)
     (define-key map "x" 'ut-delete-test-suite)
     (define-key map "r" 'ut-run-interactive)

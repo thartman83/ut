@@ -21,6 +21,7 @@
 
 (require 'f)
 (require 'ht)
+(require 'dash)
 
 (defun copyright (file-name test-name project-name)
   "Return the copyright information.
@@ -40,7 +41,7 @@ Using FILE-NAME, TEST-NAME, and PROJECT-NAME"
     " MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the"
     " GNU General Public License for more details."))
 
-(defvar *default-makefile.am*
+(defvar default-makefile.am
   "AUTOMAKE_OPTIONS = 1.4
 ACLOCAL_AMFLAGS = -I config
 
@@ -48,7 +49,7 @@ SUBDIRS =
 
 EXTRA_DIST = BUGS INSTALL-unix $(m4sources)")
 
-(defvar *default-configure.ac*
+(defvar default-configure.ac
 "dnl Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.26)
@@ -78,13 +79,13 @@ AC_OUTPUT")
   (interactive "DProject root: ")
   (when (f-exists? (f-join dir "Makefile.am"))
     (error "%s already exists, will not clobber" (f-join dir "Makefile.am")))
-  (f-write-text *default-makefile.am* 'utf-8 (f-join dir "Makefile.am")))
+  (f-write-text default-makefile.am 'utf-8 (f-join dir "Makefile.am")))
 
 (defun ut-generate-default-configure.ac (dir project-name)
   (interactive "DProject root: \nsProject name: ")
   (when (f-exists? (f-join dir "configure.ac"))
     (error "%s already exists, will not clobber" (f-join dir "configure.ac")))
-  (f-write-text (ut-format *default-configure.ac*
+  (f-write-text (ut-format default-configure.ac
                             (ht (:project-name project-name)))
                 'utf-8 "configure.ac"))
 
@@ -127,9 +128,30 @@ AC_OUTPUT")
              test-suite)
     str))
 
+(defun ut-find-line-in-file (str file-name)
+  "Find the zero index line number of the first occurance of STR in FILE-NAME."
+  (position str (split-string (f-read-text file-name) "\n") :test #'string=))
+
+(defun ut-insert-into-file (str file-name line-number)
+  "Insert STR into FILE-NAME at LINE-NUMBER."
+  (let ((lines (split-string (f-read-text file-name) "\n")))
+    (f-write-text (mapconcat #'identity (-insert-at line-number str lines) "\n") 'utf-8
+                  file-name)))
+
 (defun ut-autoreconf (path)
   "Run autoreconf -i from the PATH."
-  (start-shell-process))
+;  (start-shell-process)
+  )
+
+(defun ut-check-open-save-abort (file-name)
+  "Check to see if FILE-NAME is open in a buffer, prompts user to save and or abort operation."
+  (let ((buf (get-file-buffer file-name)))
+    (when (and (not (null buf)) (buffer-modified-p buf))  ; src file already open in buffer
+      (if (yes-or-no-p (format "Would you like to save %s before continuing? " file-name))
+          (with-current-buffer buf
+            (save-buffer))
+        (when (yes-or-no-p "Abort adding new test? ")
+          (error "User aborted adding new test"))))))
 
 (provide 'ut-common-framework)
 

@@ -135,3 +135,6 @@
         to a test suite, will likely need to modify the ut-framework
         to include new defcustoms to facilitate adding new tests to
         existing test-suites 
+** TODO Change defvars in ut-cunit-framework into defcustom and add new ut-cunit group
+** TODO Add test-suite sentinels as defcustoms to cunit
+** TODO Add new auto tools function to run autoreconf -i as well as configure after a change
