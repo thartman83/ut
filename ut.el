@@ -562,6 +562,9 @@ RUN-COMMAND and RUN-FILTER, though they may be overriden."
     (cond
      ((eq status 'signal)  ; running process threw a signal
       (ht-set! suite :run-status (cdr (assoc (process-exit-status process) ut-run-signals)))
+      (ht-set! suite :run-details "")
+      (ht-set! suite :run-start-time (format-time-string ut-datetime-string))
+      (ht-set! suite :run-end-time (format-time-string ut-datetime-string))
       (ut-draw-buffer ut-conf))
      ((eq status 'exit)
       (let ((run-output (process-get process :run-output))
