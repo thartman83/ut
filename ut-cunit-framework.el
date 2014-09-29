@@ -39,7 +39,7 @@
 (defcustom ut-cunit-default-src-makefile.am
   "AM_CPPFLAGS = -g -I%project-dir%/src -I/usr/local/include/
 bin_PROGRAMS = %test-name%_tests
-%test-name%_tests_SOURCES = main.c %test-name%_tests.c %project-dir%/src/foo.c
+%test-name%_tests_SOURCES = main.c %test-name%_tests.c %project-dir%/src/%test-name%.c
 %test-name%_tests_LDADD = -L/usr/local/lib/ -lcunit -lcunitsexpoutputter"
   "string that makes up the contents of the src level makefile.am"
   :group 'ut-cunit
@@ -307,9 +307,9 @@ CU_pSuite %test-name%_test_suite()
          (hdr-test-text (ut-format ut-cunit-hdr-test-text (ht (:test-name test-name))))
          (src-file-name (format "%s/%s_tests.c" test-src-dir (ut-test-suite-name test-suite)))
          (hdr-file-name (format "%s/%s_tests.h" test-src-dir (ut-test-suite-name test-suite))))
-    (when (f-exists? src-file-name)
+    (when (not (f-exists? src-file-name))
       (error "Could not find `%s' to add test to" src-file-name))
-    (when (f-exists? hdr-file-name)
+    (when (not (f-exists? hdr-file-name))
       (error "Could not find `%s' to add test to" hdr-file-name))
     ; Check to make sure that the file isn't already open in a buffer
     (ut-check-open-save-abort src-file-name)
@@ -355,7 +355,7 @@ CU_pSuite %test-name%_test_suite()
 (ut-define-framework cunit
   :build-command "make -C %test-dir%"
   :build-filter 'ut-cunit-process-build-data
-  :run-command "%test-dir%/src/%test-name% --writer sexp"
+  :run-command "%test-dir%/src/%test-name%_tests --writer sexp"
   :run-filter 'ut-cunit-process-run-data
   :new-test-suite 'ut-cunit-setup-new-test-suite
   :new-test 'ut-cunit-create-new-test

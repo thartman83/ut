@@ -152,15 +152,36 @@
 (defvar ut-log-buffer "*UT Log*"
   "Name of the buffer for logging UT mode messages.")
 
-;; Misc helper functions
-
-(defun read-file-contents (filename)
-  "Read the contents of FILENAME and return it as a Lisp form.
-Returns nil if the file does not exist."
-  (if (file-exists-p filename)
-      (with-temp-buffer (insert-file-contents filename)
-                        (read (buffer-substring (point-min) (point-max))))
-    nil))
+(defvar ut-run-signals
+  '((1 . sighup)
+    (2 . sigint)
+    (3 . sigquit)
+    (4 . sigill)
+    (5 . sigtrap)
+    (6 . sigabrt)
+    (8 . sigfpe)
+    (9 . sigkill)
+    (10 . sigbus)
+    (11 . sigsegv)
+    (12 . sigsys)
+    (13 . sigpipe)
+    (14 . sigalrm)
+    (15 . sigterm)
+    (16 . sigusr1)
+    (17 . isgusr2)
+    (18 . sigchld)
+    (20 . sigtstp)
+    (21 . sigurg)
+    (22 . sigpoll)
+    (23 . sigstop)
+    (25 . sigcont)
+    (26 . sigttin)
+    (27 . sigttou)
+    (28 . sigvtalrm)
+    (29 . sigprof)
+    (30 . sigxcpu)
+    (31 . sigxfsz))
+  "A-list of unix signals numbers and names.")
 
 ;; Logging Functions
 
@@ -308,7 +329,7 @@ Fields:
 
 (defun ut-parse-conf (test-conf-file)
   "Parse the TEST-CONF-FILE into a plist."
-  (let ((new-conf (read-file-contents test-conf-file)))
+  (let ((new-conf (read (f-read-text test-conf-file 'utf-8))))
     (if (ut-conf-p new-conf)
       new-conf
       (error "'%s' does not specify a valid unit testing configuration" test-conf-file))))
@@ -536,13 +557,18 @@ RUN-COMMAND and RUN-FILTER, though they may be overriden."
 
 (defun ut-run-process-sentinel (process event)
   "Handle run PROCESS EVENT."
-  (when (memq (process-status process) '(signal exit))
-    (let ((run-output (process-get process :run-output))
-          (run-exit-status (process-exit-status process))
-          (suite (process-get process :test-suite)))
-      (process-put process :finished t)
-      (funcall (ut-test-suite-run-filter suite) suite run-exit-status run-output)
-      (ut-draw-buffer ut-conf))))
+  (let ((status (process-status process))
+        (suite (process-get process :test-suite)))
+    (cond
+     ((eq status 'signal)  ; running process threw a signal
+      (ht-set! suite :run-status (cdr (assoc (process-exit-status process) ut-run-signals)))
+      (ut-draw-buffer ut-conf))
+     ((eq status 'exit)
+      (let ((run-output (process-get process :run-output))
+          (run-exit-status (process-exit-status process)))
+        (process-put process :finished t)
+        (funcall (ut-test-suite-run-filter suite) suite run-exit-status run-output)
+        (ut-draw-buffer ut-conf))))))
 
 ;; Misc
 
@@ -812,12 +838,16 @@ Display all test information if nil."
                          (propertize "Failed" 'face 'ut-error-face))
                         ((eq (ut-test-suite-run-status test-suite) 'error)
                          (propertize "Error" 'face 'ut-error-face))
+                        ((string= (substring (symbol-name (ut-test-suite-run-status test-suite)) 0 3)
+                                  "sig")
+                         (propertize (symbol-name (ut-test-suite-run-status test-suite))
+                                     'face 'ut-error-face))
                         (t "Unknown Run Status"))
                   (ut-test-suite-run-time test-suite)))
   (when (not (ut-test-suite-summarize-run test-suite))
-    (insert (mapconcat #'(lambda (test) 
-                           (format "\t\t* %s: %s\n" (ht-get test :name) 
-                                   (cond 
+    (insert (mapconcat #'(lambda (test)
+                           (format "\t\t* %s: %s\n" (ht-get test :name)
+                                   (cond
                                     ((eq (ht-get test :status) 'success)
                                      (propertize "Succeeded" 'face 'ut-succeeded-face))
                                     ((eq (ht-get test :status) 'failure)
@@ -874,8 +904,7 @@ Display all test information if nil."
   (ut-log-message "Running test-suite `%s' with command `%s'\n"
                   (ut-test-suite-name test-suite)
                   (ut-test-suite-run-command test-suite))
-  (let* ((exec-path (cons (f-join (ut-test-dir conf) (ut-test-suite-test-dir test-suite))
-                          exec-path))
+  (let* ((exec-path (cons (ut-test-dir conf) exec-path))
          (process-name (concat "run-" (ut-test-suite-name test-suite)))
          (process-command (split-string (ut-test-suite-run-command test-suite) " "))
          (process (apply #'start-process (append (list process-name (current-buffer)
