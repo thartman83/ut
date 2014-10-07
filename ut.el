@@ -100,6 +100,15 @@
   "Face for failed result"
   :group 'ut)
 
+(defface ut-processing-face
+  `((((class color) (background dark))
+     (:foreground "light slate blue" :bold t))
+    (((class color) (background light))
+     (:foreground "light slate blue" :bold t))
+    (t (:bold t)))
+  "Face for processing result"
+  :group 'ut)
+
 (defface ut-succeeded-face
   `((((class color) (background dark))
      (:foreground "yellow" :bold t))
@@ -548,7 +557,7 @@ RUN-COMMAND and RUN-FILTER, though they may be overriden."
       (process-put process :finished t)
       (ht-set suite :build-time (format-time-string ut-datetime-string))
       (funcall (ut-test-suite-build-filter suite) suite build-exit-status build-output)
-      (ut-draw-buffer ut-conf))))
+      (ut-draw-buffer (process-get process :conf)))))
 
 (defun ut-run-process-filter (process output)
   "Handle run PROCESS OUTPUT."
@@ -564,14 +573,13 @@ RUN-COMMAND and RUN-FILTER, though they may be overriden."
       (ht-set! suite :run-status (cdr (assoc (process-exit-status process) ut-run-signals)))
       (ht-set! suite :run-details "")
       (ht-set! suite :run-start-time (format-time-string ut-datetime-string))
-      (ht-set! suite :run-end-time (format-time-string ut-datetime-string))
-      (ut-draw-buffer ut-conf))
+      (ht-set! suite :run-end-time (format-time-string ut-datetime-string)))
      ((eq status 'exit)
       (let ((run-output (process-get process :run-output))
           (run-exit-status (process-exit-status process)))
         (process-put process :finished t)
-        (funcall (ut-test-suite-run-filter suite) suite run-exit-status run-output)
-        (ut-draw-buffer ut-conf))))))
+        (funcall (ut-test-suite-run-filter suite) suite run-exit-status (reverse run-output)))))
+    (ut-draw-buffer (process-get process :conf))))
 
 ;; Misc
 
@@ -821,6 +829,8 @@ Display all test information if nil."
                   (if (ut-test-suite-summarize-build test-suite) "+" "-")
                   (cond ((null (ut-test-suite-build-status test-suite))
                          "Not Built")
+                        ((eq (ut-test-suite-build-status test-suite) 'building)
+                         (propertize "Building" 'face 'ut-processing-face))
                         ((eq (ut-test-suite-build-status test-suite) 'built)
                          (propertize "Succeeded" 'face 'ut-succeeded-face))
                         ((eq (ut-test-suite-build-status test-suite) 'error)
@@ -835,6 +845,8 @@ Display all test information if nil."
                   (if (ut-test-suite-summarize-run test-suite) "+" "-")
                   (cond ((null (ut-test-suite-run-status test-suite))
                          "Not Run")
+                        ((eq (ut-test-suite-run-status test-suite) 'running)
+                         (propertize "Running" 'face 'ut-processing-face))
                         ((eq (ut-test-suite-run-status test-suite) 'success)
                          (propertize "Succeeded" 'face 'ut-succeeded-face))
                         ((eq (ut-test-suite-run-status test-suite) 'failure)
@@ -907,6 +919,10 @@ Display all test information if nil."
   (ut-log-message "Running test-suite `%s' with command `%s'\n"
                   (ut-test-suite-name test-suite)
                   (ut-test-suite-run-command test-suite))
+  (ht-set test-suite :run-status 'running)
+  (ht-set test-suite :run-details "")
+  (ht-set test-suite :run-time "")
+  (ut-draw-buffer conf)
   (let* ((exec-path (cons (ut-test-dir conf) exec-path))
          (process-name (concat "run-" (ut-test-suite-name test-suite)))
          (process-command (split-string (ut-test-suite-run-command test-suite) " "))
@@ -914,6 +930,7 @@ Display all test information if nil."
                                                        (car process-command))
                                                  (rest process-command)))))
     (process-put process :finished nil)
+    (process-put process :conf conf)
     (process-put process :test-suite test-suite)
     (set-process-filter process #'ut-run-process-filter)
     (set-process-sentinel process #'ut-run-process-sentinel)
@@ -931,12 +948,17 @@ Display all test information if nil."
   (ut-log-message "Building test-suite `%s' with command `%s'\n"
                   (ut-test-suite-name test-suite)
                   (ut-test-suite-build-command test-suite))
+  (ht-set test-suite :build-details "")
+  (ht-set test-suite :build-time "")
+  (ht-set test-suite :build-status 'building)
+  (ut-draw-buffer conf)
   (let* ((process-name (concat "build-" (ut-test-suite-name test-suite)))
          (process-command (split-string (ut-test-suite-build-command test-suite) " "))
          (process (apply #'start-process (append (list process-name (current-buffer)
                                                        (car process-command))
                                                  (rest process-command)))))
     (process-put process :finished nil)
+    (process-put process :conf conf)
     (process-put process :test-suite test-suite)
     (set-process-filter process #'ut-build-process-filter)
     (set-process-sentinel process #'ut-build-process-sentinel)
@@ -1074,6 +1096,11 @@ Display all test information if nil."
     (error "Not in UT buffer"))
   (ut-run-all ut-conf))
 
+(defun ut-debug-interactive (test-suite)
+  "Launch the debug utility for TEST-SUITE."
+  (interactive (list (ut-get-test-suite-at-point)))
+  )
+
 ;; Main entry function and mode defuns
 
 (defun ut ()
@@ -1122,7 +1149,7 @@ Display all test information if nil."
     (define-key map "g" 'ut-draw-buffer-interactive)
     (define-key map (kbd "TAB") 'ut-toggle)
     (define-key map "q" 'ut-quit)
-;    (define-key map "d" 'ut-debug-test-suite)
+    (define-key map "d" 'ut-debug-interactive)
 ;    (define-key map "v" 'ut-profile-test-suite)
     map)
   "Keymap for ut-mode.")
