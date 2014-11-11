@@ -531,7 +531,7 @@ RUN-COMMAND and RUN-FILTER, though they may be overriden."
 
 (defun ut-del-test-suite (conf name)
   "Remove from CONF test suite NAME from the list of test suites."
-  (interactive (read-string "Test suite name: "))
+  (interactive (read-string "Test suite name to delete: "))
   (when (not (ut-test-suite-exists-p conf name))
     (error "Test suite '%s' does not exist" name))
   (ht-remove (ut-test-suites conf) name)
@@ -557,7 +557,7 @@ RUN-COMMAND and RUN-FILTER, though they may be overriden."
       (process-put process :finished t)
       (ht-set suite :build-time (format-time-string ut-datetime-string))
       (funcall (ut-test-suite-build-filter suite) suite build-exit-status build-output)
-      (ut-draw-buffer (process-get process :conf)))))
+      (ut-draw-buffer (process-get process :buffer)))))
 
 (defun ut-run-process-filter (process output)
   "Handle run PROCESS OUTPUT."
@@ -579,7 +579,7 @@ RUN-COMMAND and RUN-FILTER, though they may be overriden."
           (run-exit-status (process-exit-status process)))
         (process-put process :finished t)
         (funcall (ut-test-suite-run-filter suite) suite run-exit-status (reverse run-output)))))
-    (ut-draw-buffer (process-get process :conf))))
+    (ut-draw-buffer (process-get process :buffer))))
 
 ;; Misc
 
@@ -623,6 +623,7 @@ https//github.com/flycheck/"
         (build-filter (plist-get properties :build-filter))
         (run-command (plist-get properties :run-command))
         (run-filter (plist-get properties :run-filter))
+        (debug-hook (plist-get properties :debug))
         (new-test-suite-hook (plist-get properties :new-test-suite))
         (new-test-hook (plist-get properties :new-test))
         (new-project-hook (plist-get properties :new-project)))
@@ -638,6 +639,8 @@ https//github.com/flycheck/"
       (error "Run command must either be nil, a string or a list of strings"))
     (unless (functionp (eval run-filter))
       (error "Run filter must be a function"))
+    (unless (or (null debug-hook) (functionp (eval debug-hook)))
+      (error "Debug hook must be a function or nil"))
     (unless (or (null new-test-suite-hook)
                 (functionp (eval new-test-suite-hook)))
       (error "New test suite hook must either be nil or a function"))
@@ -671,6 +674,12 @@ https//github.com/flycheck/"
        (defcustom ,(intern (format "ut-%s-run-filter-hook" (symbol-name framework)))
          ,run-filter
          "Hook to run when the run process has been completed"
+         :type 'hook
+         :group 'ut
+         :risky t)
+       (defcustom ,(intern (format "ut-%s-debug-hook" (symbol-name framework)))
+         ,debug-hook
+         "Hook to run to debug test-suite"
          :type 'hook
          :group 'ut
          :risky t)
@@ -730,6 +739,12 @@ https//github.com/flycheck/"
   "Return the run-filter associated with FRAMEWORK, nil if framework DNE."
   (condition-case nil
       (symbol-value (intern (format "ut-%s-run-filter-hook" framework)))
+    (error nil)))
+
+(defun ut-framework-debug-hook (framework)
+  "Return the debug-hook associated with FRAMEWORK, nil if framework DNE."
+  (condition-case nil
+      (symbol-value (intern (format "ut-%s-debug-hook" framework)))
     (error nil)))
 
 (defun ut-framework-new-test-suite-hook (framework)
@@ -793,27 +808,30 @@ https//github.com/flycheck/"
 
 ;; Drawing functions
 
-(defun ut-draw-buffer (conf)
-  "Draw the complete unit testing buffer based on CONF."
-  (let ((inhibit-read-only t)
-        (line-number (line-number-at-pos)))
-    (when (ut-buffer-p)
+(defun ut-draw-buffer (buf)
+  "Draw the complete unit testing for buffer BUF."
+  (with-current-buffer buf
+    (let ((inhibit-read-only t)
+          (line-number (line-number-at-pos))
+          (conf (buffer-local-value 'ut-conf buf)))
       (erase-buffer)
-      (ut-draw-header conf)
-      (insert "\n")
-      (maphash #'(lambda (key test-suite)
-                   (ut-draw-test-suite test-suite nil)
-                   (insert "\n"))
-               (ut-test-suites conf))
-      (insert "\n")
-      (ut-draw-summary (ut-test-suites conf))
-      (goto-line line-number)
-      (ut-write-conf conf (f-join (ut-project-dir conf) ut-conf-name)))))
+        (ut-draw-header conf)
+        (insert "\n")
+        (maphash #'(lambda (key test-suite)
+                     (ut-draw-test-suite test-suite nil)
+                     (insert "\n"))
+                 (ut-test-suites conf))
+        (insert "\n")
+        (ut-draw-summary (ut-test-suites conf))
+        (goto-line line-number)
+        (ut-write-conf conf (f-join (ut-project-dir conf) ut-conf-name)))))
 
 (defun ut-draw-buffer-interactive ()
   "Draw the complete unit testing buffer based on the local buffer variable ut-conf."
   (interactive)
-  (ut-draw-buffer ut-conf))
+  (when (not (ut-buffer-p))
+      (error "Not a ut buffer"))
+  (ut-draw-buffer (current-buffer)))
 
 (defun ut-draw-header (conf)
   "Draw the ut buffer header based on CONF at point."
@@ -906,68 +924,76 @@ Display all test information if nil."
                        (make-directory (f-join (ut-test-dir c) d))
                      (error "Aborting")))
                  (list c (ut-new-test-suite c n d f))))
-  (ut-draw-buffer conf))
+  (ut-draw-buffer (current-buffer)))
 
 (defun ut-delete-test-suite (test-suite)
   "Delete TEST-SUITE from the current ut definition."
   (error "Not implemented"))
 
-(defun ut-run-test-suite (conf test-suite)
-  "Run CONF/TEST-SUITE, parse the output and update the result."
-  (when (not (ut-test-suite-p conf test-suite))
-    (error "Could not find test suite '%s' to run" (ut-test-suite-name test-suite)))
-  (ut-log-message "Running test-suite `%s' with command `%s'\n"
-                  (ut-test-suite-name test-suite)
-                  (ut-test-suite-run-command test-suite))
-  (ht-set test-suite :run-status 'running)
-  (ht-set test-suite :run-details "")
-  (ht-set test-suite :run-time "")
-  (ut-draw-buffer conf)
-  (let* ((exec-path (cons (ut-test-dir conf) exec-path))
-         (process-name (concat "run-" (ut-test-suite-name test-suite)))
-         (process-command (split-string (ut-test-suite-run-command test-suite) " "))
-         (process (apply #'start-process (append (list process-name (current-buffer)
-                                                       (car process-command))
-                                                 (rest process-command)))))
-    (process-put process :finished nil)
-    (process-put process :conf conf)
-    (process-put process :test-suite test-suite)
-    (set-process-filter process #'ut-run-process-filter)
-    (set-process-sentinel process #'ut-run-process-sentinel)
-    (set-process-query-on-exit-flag process nil)))
+(defun ut-run-test-suite (buf test-suite)
+  "From the ut buffer BUF, run TEST-SUITE, parse the output and update the result."
+  (with-current-buffer buf
+    (let ((conf (buffer-local-value 'ut-conf buf)))
+      (when (not (ut-test-suite-p conf test-suite))
+        (error "Could not find test suite '%s' to run" (ut-test-suite-name test-suite)))
+      (ut-log-message "Running test-suite `%s' with command `%s'\n"
+                      (ut-test-suite-name test-suite)
+                      (ut-test-suite-run-command test-suite))
+      (ht-set test-suite :run-status 'running)
+      (ht-set test-suite :run-details "")
+      (ht-set test-suite :run-time "")
+      (ut-draw-buffer buf)
+      (let* ((exec-path (cons (ut-test-dir conf) exec-path))
+             (process-name (concat "run-" (ut-test-suite-name test-suite)))
+             (process-command (split-string (ut-test-suite-run-command test-suite) " "))
+             (process (apply #'start-process (append (list process-name (current-buffer)
+                                                           (car process-command))
+                                                     (rest process-command)))))
+        (process-put process :finished nil)
+        (process-put process :buffer buf)
+        (process-put process :test-suite test-suite)
+        (set-process-filter process #'ut-run-process-filter)
+        (set-process-sentinel process #'ut-run-process-sentinel)
+        (set-process-query-on-exit-flag process nil)))))
 
 (defun ut-run-all (conf)
   "Run all of the test suites defined in CONF."
   (ht-each #'(lambda (key test-suite) (ut-run-test-suite conf test-suite))
            (ut-test-suites conf)))
 
-(defun ut-build-test-suite (conf test-suite)
-  "Build CONF/TEST-SUITE, parse the output and update the compilation status."
-  (when (not (ut-test-suite-p conf test-suite))
-    (error "Could not find test suite '%s' to build" (ut-test-suite-name test-suite)))
-  (ut-log-message "Building test-suite `%s' with command `%s'\n"
-                  (ut-test-suite-name test-suite)
-                  (ut-test-suite-build-command test-suite))
-  (ht-set test-suite :build-details "")
-  (ht-set test-suite :build-time "")
-  (ht-set test-suite :build-status 'building)
-  (ut-draw-buffer conf)
-  (let* ((process-name (concat "build-" (ut-test-suite-name test-suite)))
-         (process-command (split-string (ut-test-suite-build-command test-suite) " "))
-         (process (apply #'start-process (append (list process-name (current-buffer)
-                                                       (car process-command))
-                                                 (rest process-command)))))
-    (process-put process :finished nil)
-    (process-put process :conf conf)
-    (process-put process :test-suite test-suite)
-    (set-process-filter process #'ut-build-process-filter)
-    (set-process-sentinel process #'ut-build-process-sentinel)
-    (set-process-query-on-exit-flag process nil)))
+(defun ut-build-test-suite (buf test-suite)
+  "From the ut buffer BUF, TEST-SUITE, parse the output and update the compilation status."
+  (with-current-buffer buf
+    (let ((conf (buffer-local-value 'ut-conf buf)))
+      (when (not (ut-test-suite-p conf test-suite))
+        (error "Could not find test suite '%s' to build" (ut-test-suite-name test-suite)))
+      (ut-log-message "Building test-suite `%s' with command `%s'\n"
+                      (ut-test-suite-name test-suite)
+                      (ut-test-suite-build-command test-suite))
+      (ht-set test-suite :build-details "")
+      (ht-set test-suite :build-time "")
+      (ht-set test-suite :build-status 'building)
+      (ut-draw-buffer buf)
+      (let* ((process-name (concat "build-" (ut-test-suite-name test-suite)))
+             (process-command (split-string (ut-test-suite-build-command test-suite) " "))
+             (process (apply #'start-process (append (list process-name (current-buffer)
+                                                           (car process-command))
+                                                     (rest process-command)))))
+        (process-put process :finished nil)
+        (process-put process :buffer buf)
+        (process-put process :test-suite test-suite)
+        (set-process-filter process #'ut-build-process-filter)
+        (set-process-sentinel process #'ut-build-process-sentinel)
+        (set-process-query-on-exit-flag process nil)))))
 
 (defun ut-build-all (conf)
   "Build all of the test suites defined in CONF."
   (ht-each #'(lambda (key test-suite) (ut-build-test-suite conf test-suite))
            (ut-test-suites conf)))
+
+(defun ut-debug-test-suite (test-suite conf)
+  "Call debug hook for TEST-SUITE with CONF based on the framework assigned to the test-suite."
+  (funcall (ut-framework-debug-hook (ut-test-suite-framework test-suite)) test-suite conf))
 
 (defun ut-toggle ()
   "Toggle the narrowing/widening of the context sensitive region."
@@ -988,10 +1014,6 @@ Display all test information if nil."
   (interactive)
   (when (ut-buffer-p)
     (kill-buffer)))
-
-(defun ut-debug-test-suite (test-suite)
-  "Run the debugger associated with TEST-SUITE."
-  (error "Not Implemented"))
 
 (defun ut-profile-test-suite (test-suite)
   "Run the profiler associated with TEST-SUITE."
@@ -1070,7 +1092,7 @@ Display all test information if nil."
   (let ((test-suite (ut-get-test-suite-at-point)))
     (when (null test-suite)
       (error "No test suite at point"))
-    (ut-build-test-suite ut-conf test-suite)))
+    (ut-build-test-suite (current-buffer) test-suite)))
 
 (defun ut-build-all-interactive ()
   "Interactive version of ut-build-all."
@@ -1087,7 +1109,7 @@ Display all test information if nil."
   (let ((test-suite (ut-get-test-suite-at-point)))
     (when (null test-suite)
       (error "No test suite at point"))
-    (ut-run-test-suite ut-conf test-suite)))
+    (ut-run-test-suite (current-buffer) test-suite)))
 
 (defun ut-run-all-interactive ()
   "Interactive version of ut-run-all."
@@ -1096,10 +1118,14 @@ Display all test information if nil."
     (error "Not in UT buffer"))
   (ut-run-all ut-conf))
 
-(defun ut-debug-interactive (test-suite)
+(defun ut-debug-interactive ()
   "Launch the debug utility for TEST-SUITE."
-  (interactive (list (ut-get-test-suite-at-point)))
-  )
+  (interactive)
+  (when (not (ut-buffer-p))
+    (error "Not in UT buffer"))  
+  (let ((test-suite (ut-get-test-suite-at-point))
+        (conf (buffer-local-value 'ut-conf (current-buffer))))
+    (ut-debug-test-suite test-suite conf)))
 
 ;; Main entry function and mode defuns
 
@@ -1126,7 +1152,7 @@ Display all test information if nil."
         (error "Test directory does not exist"))
       (cd (ut-test-dir ut-conf))
       (read-only-mode)
-      (ut-draw-buffer ut-conf)
+      (ut-draw-buffer (current-buffer))
       (switch-to-buffer buffer-name))))
 
 (defun ut-buffer-p ()

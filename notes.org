@@ -138,3 +138,5 @@
 ** TODO Change defvars in ut-cunit-framework into defcustom and add new ut-cunit group
 ** TODO Add test-suite sentinels as defcustoms to cunit
 ** TODO Add new auto tools function to run autoreconf -i as well as configure after a change
+** TODO Need to fix ut-add-test-suite, needs to be split out into an interactive version
+** TODO Add mutator functions for all ut-conf related functions. draw-buffer should only be called from mutators
