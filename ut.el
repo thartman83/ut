@@ -624,6 +624,7 @@ https//github.com/flycheck/"
         (run-command (plist-get properties :run-command))
         (run-filter (plist-get properties :run-filter))
         (debug-hook (plist-get properties :debug))
+        (find-source-hook (plist-get properties :find-source))
         (new-test-suite-hook (plist-get properties :new-test-suite))
         (new-test-hook (plist-get properties :new-test))
         (new-project-hook (plist-get properties :new-project)))
@@ -641,6 +642,8 @@ https//github.com/flycheck/"
       (error "Run filter must be a function"))
     (unless (or (null debug-hook) (functionp (eval debug-hook)))
       (error "Debug hook must be a function or nil"))
+    (unless (or (null find-source-hook) (functionp (eval find-source-hook)))
+      (error "Find source hook must be a function or nil"))
     (unless (or (null new-test-suite-hook)
                 (functionp (eval new-test-suite-hook)))
       (error "New test suite hook must either be nil or a function"))
@@ -683,6 +686,12 @@ https//github.com/flycheck/"
          :type 'hook
          :group 'ut
          :risky t)
+       (defcustom ,(intern (format "ut-%s-find-source-hook" (symbol-name framework)))
+         ,find-source-hook
+         "Hook to run to find the source file associated with a test sute"
+         :type 'hook
+         :group 'ut
+         :risky t)
        (defcustom ,(intern (format "ut-%s-new-test-suite-hook" (symbol-name framework)))
          ,new-test-suite-hook
          "Hook to run when creating a new test suite"
@@ -712,6 +721,8 @@ https//github.com/flycheck/"
       (makunbound (intern (format "ut-%s-build-command" framework-str)))
       (makunbound (intern (format "ut-%s-build-filter-hook" framework-str)))
       (makunbound (intern (format "ut-%s-run-command" framework-str)))
+      (makunbound (intern (format "ut-%s-debug-hook" framework-str)))
+      (makunbound (intern (format "ut-%s-find-source-hook" framework-str)))
       (makunbound (intern (format "ut-%s-run-filter-hook" framework-str)))
       (makunbound (intern (format "ut-%s-new-test-suite-hook" framework-str)))
       (makunbound (intern (format "ut-%s-new-project-hook" framework-str)))
@@ -745,6 +756,12 @@ https//github.com/flycheck/"
   "Return the debug-hook associated with FRAMEWORK, nil if framework DNE."
   (condition-case nil
       (symbol-value (intern (format "ut-%s-debug-hook" framework)))
+    (error nil)))
+
+(defun ut-framework-find-source-hook (framework)
+  "Return the find-source-hook associated with FRAMEWORK, nil if framework DNE."
+  (condition-case nil
+      (symbol-value (intern (format "ut-%s-find-source-hook" framework)))
     (error nil)))
 
 (defun ut-framework-new-test-suite-hook (framework)
@@ -995,6 +1012,11 @@ Display all test information if nil."
   "Call debug hook for TEST-SUITE with CONF based on the framework assigned to the test-suite."
   (funcall (ut-framework-debug-hook (ut-test-suite-framework test-suite)) test-suite conf))
 
+(defun ut-find-test-suite-source (test-suite conf)
+  "Find and open the source file associated with TEST-SUITE and CONF."
+  (find-file (funcall (ut-framework-find-source-hook (ut-test-suite-framework test-suite))
+                      test-suite conf)))
+
 (defun ut-toggle ()
   "Toggle the narrowing/widening of the context sensitive region."
   (interactive)
@@ -1127,6 +1149,15 @@ Display all test information if nil."
         (conf (buffer-local-value 'ut-conf (current-buffer))))
     (ut-debug-test-suite test-suite conf)))
 
+(defun ut-find-test-suite-source-interactive ()
+  "Find and load the source file associated with the test suite."
+  (interactive)
+  (when (not (ut-buffer-p))
+    (error "Not in UT buffer"))
+  (let ((test-suite (ut-get-test-suite-at-point))
+        (conf (buffer-local-value 'ut-conf (current-buffer))))
+    (ut-find-test-suite-source test-suite conf)))
+
 ;; Main entry function and mode defuns
 
 (defun ut ()
@@ -1171,11 +1202,12 @@ Display all test information if nil."
     (define-key map "R" 'ut-run-all-interactive)
     (define-key map "b" 'ut-build-interactive)
     (define-key map "B" 'ut-build-all-interactive)
-    (define-key map "t" 'ut-toggle)
+    (define-key map "t" 'ut-toggle)    
     (define-key map "g" 'ut-draw-buffer-interactive)
     (define-key map (kbd "TAB") 'ut-toggle)
     (define-key map "q" 'ut-quit)
     (define-key map "d" 'ut-debug-interactive)
+    (define-key map "f" 'ut-find-test-suite-source-interactive)
 ;    (define-key map "v" 'ut-profile-test-suite)
     map)
   "Keymap for ut-mode.")

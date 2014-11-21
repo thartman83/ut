@@ -366,12 +366,17 @@ CU_pSuite %test-name%_test_suite()
   "Find the line number in FILE-NAME of the test-suite sentinel."
   (ut-find-line-in-file "  /* ADD TESTS TO SUITE HERE */" file-name))
 
+(defun ut-cunit-find-test-suite-source (suite conf)
+  "Find the source file assocaite with SUITE and CONF."
+  (f-join (ut-test-suite-test-dir suite) (format "src/%s_tests.c" (ut-test-suite-name suite))))
+
 (ut-define-framework cunit
   :build-command "make -C %test-dir%"
   :build-filter 'ut-cunit-process-build-data
   :run-command "%test-dir%/src/%test-name%_tests --writer sexp"
   :run-filter 'ut-cunit-process-run-data
   :debug 'ut-cunit-debug-test-suite
+  :find-source 'ut-cunit-find-test-suite-source
   :new-test-suite 'ut-cunit-setup-new-test-suite
   :new-test 'ut-cunit-create-new-test
   :new-project 'ut-cunit-setup-new-project)
