@@ -1078,33 +1078,33 @@ Display all test information if nil."
                  (ht-set! test-suite :start-line current-line)
                  (incf current-line)
                  (ht-set! test-suite :build-start-line current-line)
-                 (incf current-line 
-                       (if (ut-test-suite-summarize-build test-suite) 
+                 (incf current-line
+                       (if (ut-test-suite-summarize-build test-suite)
                            0
                          (length (split-string (ut-test-suite-build-details test-suite) "\n"))))
                  (ht-set! test-suite :build-end-line current-line)
                  (incf current-line)
                  (ht-set! test-suite :run-start-line current-line)
-                 (incf current-line 
+                 (incf current-line
                        (if (ut-test-suite-summarize-run test-suite)
                            0
                          (length (ut-test-suite-run-details test-suite))))
                  (ht-set! test-suite :run-end-line current-line)
                  (ht-set! test-suite :end-line current-line)
-                 (incf current-line 2))             
+                 (incf current-line 2))
              (ut-test-suites conf))))
 
 (defun ut-new-test-interactive (test-name test-suite)
   "Add a TEST-NAME to the current TEST-SUITE."
   (interactive (let* ((ts (ut-get-test-suite-at-point))
-                      (tn (if (null ts) 
+                      (tn (if (null ts)
                               (error "No test suite at point")
                             (read-string (format "Test to add to %s test suite: " (ut-test-suite-name ts))
                                          "test_"))))
                  (list tn ts)))
   (when (not (ut-buffer-p))
     (error "Not in UT buffer"))
-  (ut-new-test ut-conf test-name test-suite))
+  (ut-new-test (buffer-local-value 'ut-conf (current-buffer)) test-name test-suite))
 
 (defun ut-build-interactive ()
   "Interactive version of ut-build-test-suite.  Build CONF/TEST-SUITE."
@@ -1121,7 +1121,7 @@ Display all test information if nil."
   (interactive)
   (when (not (ut-buffer-p))
     (error "Not in UT buffer"))
-  (ut-build-all ut-conf))
+  (ut-build-all (buffer-local-value 'ut-conf (current-buffer))))
 
 (defun ut-run-interactive ()
   "Interactive version of ut-run-test-suite."
@@ -1144,7 +1144,7 @@ Display all test information if nil."
   "Launch the debug utility for TEST-SUITE."
   (interactive)
   (when (not (ut-buffer-p))
-    (error "Not in UT buffer"))  
+    (error "Not in UT buffer"))
   (let ((test-suite (ut-get-test-suite-at-point))
         (conf (buffer-local-value 'ut-conf (current-buffer))))
     (ut-debug-test-suite test-suite conf)))
@@ -1179,9 +1179,9 @@ Display all test information if nil."
     (with-current-buffer (get-buffer-create buffer-name)
       (ut-mode)
       (setq-local ut-conf def)
-      (when (not (f-directory? (ut-test-dir ut-conf)))
+      (when (not (f-directory? (ut-test-dir def)))
         (error "Test directory does not exist"))
-      (cd (ut-test-dir ut-conf))
+      (cd (ut-test-dir def))
       (read-only-mode)
       (ut-draw-buffer (current-buffer))
       (switch-to-buffer buffer-name))))
@@ -1202,7 +1202,7 @@ Display all test information if nil."
     (define-key map "R" 'ut-run-all-interactive)
     (define-key map "b" 'ut-build-interactive)
     (define-key map "B" 'ut-build-all-interactive)
-    (define-key map "t" 'ut-toggle)    
+    (define-key map "t" 'ut-toggle)
     (define-key map "g" 'ut-draw-buffer-interactive)
     (define-key map (kbd "TAB") 'ut-toggle)
     (define-key map "q" 'ut-quit)
