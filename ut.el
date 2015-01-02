@@ -1046,13 +1046,13 @@ Display all test information if nil."
   (interactive)
   (when (not (ut-buffer-p))
     (error "Not in a UT buffer"))
-  (ut-calculate-test-suite-regions ut-conf)
+  (ut-calculate-test-suite-regions (buffer-local-value 'ut-conf (current-buffer)))
   (let ((retval nil))
     (maphash #'(lambda (name test-suite)
                  (when (and (>= (line-number-at-pos) (ut-test-suite-start-line test-suite))
                           (<= (line-number-at-pos) (ut-test-suite-end-line test-suite)))
                    (setf retval test-suite)))
-             (ut-test-suites ut-conf))
+             (ut-test-suites (buffer-local-value 'ut-conf (current-buffer))))
     retval))
 
 (defun ut-point-in-test-suite-build? (test-suite)
@@ -1138,7 +1138,7 @@ Display all test information if nil."
   (interactive)
   (when (not (ut-buffer-p))
     (error "Not in UT buffer"))
-  (ut-run-all ut-conf))
+  (ut-run-all (buffer-local-value 'ut-conf (current-buffer))))
 
 (defun ut-debug-interactive ()
   "Launch the debug utility for TEST-SUITE."
