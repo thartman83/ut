@@ -26,17 +26,22 @@
 
 (ert-deftest test-ut-new-conf ()
   (let ((bad-path "/path/to/no/where/.tests"))
-    (should-error (ut-new-conf bad-path "foo" default-directory default-directory 'echo)
-                  (format "Could not create new test configuration file `%s'" bad-path))
+    (should-error (ut-new-conf bad-path "foo" default-directory
+                               default-directory 'echo)
+                  (format "Could not create new test configuration file `%s'"
+                          bad-path))
     (should (not (f-exists? bad-path))))
   (with-temporary-dir
    (should-error (ut-new-conf ".tests" "foo" default-directory "foo" 'echo)
                  (format "Test directory `%s' does not exist" "foo"))
-   (should-error (ut-new-conf ".tests" "foo" default-directory (f-parent default-directory) 'echo)
-                 (format "Project directory `%s' is not an ancestor of test directory `%s'"
+   (should-error (ut-new-conf ".tests" "foo" default-directory
+                              (f-parent default-directory) 'echo)
+                 (format "Project directory `%s' is not an ancestor of"
+                         " test directory `%s'"
                          default-directory (f-parent default-directory)))
    (make-directory "tests")
-   (let ((conf (ut-new-conf ".tests" "foo" default-directory (f-join default-directory "tests")
+   (let ((conf (ut-new-conf ".tests" "foo" default-directory
+                            (f-join default-directory "tests")
                             'echo)))
      (should (string= (ut-project-name conf) "foo"))
      (should (f-same? (ut-project-dir conf) default-directory))

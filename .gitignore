@@ -1,3 +1,4 @@
 # ignore emacs tmp files
 *~
 \#*#
+/flycheck_ut.el

@@ -277,7 +277,8 @@
                                nil)
                               ((or (not (ht-contains? test :status))
                                    (not (symbolp (ht-get test :status)))
-                                   (not (member (ht-get test :status) '(success failure error))))
+                                   (not (member (ht-get test :status)
+                                                '(success failure error))))
                                nil)
                               (t t)))
                          (ht-get result :tests))))
@@ -294,28 +295,34 @@ Fields:
        PROJECT-DIR: root directory of the project
        TEST-DIR: root directory for the testing code
        FRAMEWORK: general testing framework for the project"
-  (interactive (let* ((c (read-file-name "Configuration file: " default-directory
-                                         (f-join default-directory ut-conf-name) nil
-                                         ut-conf-name))
-                      (p (read-string "Project name: "))
-                      (d (read-directory-name "Project directory: " default-directory))
-                      (td (read-directory-name "Test directory: " (f-join default-directory "tests")))
-                      (f (intern (completing-read "Framework: " (mapcar #'(lambda (x) (symbol-name x))
-                                                                        ut-frameworks)))))
-                   (when (not (f-directory? d))
-                     (if (y-or-no-p (format "Project directory '%s' does not exist, create?" d))
-                         (make-directory d)
-                       (error "New ut conf creation aborted")))
-                   (when (not (f-relative? td))
-                     (if (f-ancestor-of? d td)
-                         (setf td (f-relative td d))
-                       (error "Test directory '%s' is not an ancestor of '%s'" td d)))
-                   (when (not (f-directory? (f-join d td)))
-                     (if (y-or-no-p (format "Test directory '%s' does not exist, create?"
-                                            (f-join d td)))
-                         (make-directory (f-join d td))
-                       (error "New ut conf creation aborted")))
-                   (list c p d td f)))
+  (interactive
+   (let* ((c (read-file-name "Configuration file: " default-directory
+                             (f-join default-directory ut-conf-name) nil
+                             ut-conf-name))
+          (p (read-string "Project name: "))
+          (d (read-directory-name "Project directory: " default-directory))
+          (td (read-directory-name "Test directory: "
+                                   (f-join default-directory "tests")))
+          (f (intern (completing-read "Framework: "
+                                      (mapcar #'(lambda (x)
+                                                  (symbol-name x))
+                                              ut-frameworks)))))
+     (when (not (f-directory? d))
+       (if (y-or-no-p (format (concat "Project directory '%s' "
+                                      "does not exist, create?") d))
+           (make-directory d)
+         (error "New ut conf creation aborted")))
+     (when (not (f-relative? td))
+       (if (f-ancestor-of? d td)
+           (setf td (f-relative td d))
+         (error "Test directory '%s' is not an ancestor of '%s'" td d)))
+     (when (not (f-directory? (f-join d td)))
+       (if (y-or-no-p (format (concat "Test directory '%s' does"
+                                      " not exist, create?")
+                              (f-join d td)))
+           (make-directory (f-join d td))
+         (error "New ut conf creation aborted")))
+     (list c p d td f)))
   (when (not (file-writable-p test-conf))
     (error "Could not create new test configuration file `%s'" test-conf))
   (when (not (f-directory? project-dir))
@@ -323,7 +330,8 @@ Fields:
   (when (not (f-directory? test-dir))
     (error "Test directory `%s' does not exist" test-dir))
   (when (not (f-ancestor-of? project-dir test-dir))
-    (error "Project directory `%s' is not an ancestor of test directory `%s'" project-dir test-dir))
+    (error "Project directory `%s' is not an ancestor of test directory `%s'"
+           project-dir test-dir))
   (when (not (memq framework ut-frameworks))
     (error "Framework `%s' does not exist" framework))
   (let ((conf (ht (:project-name project-name)
@@ -341,7 +349,8 @@ Fields:
   (let ((new-conf (read (f-read-text test-conf-file 'utf-8))))
     (if (ut-conf-p new-conf)
       new-conf
-      (error "'%s' does not specify a valid unit testing configuration" test-conf-file))))
+      (error "'%s' does not specify a valid unit testing configuration"
+             test-conf-file))))
 
 (defun ut-reset-conf (conf)
   "Reset CONF to blank."

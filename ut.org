@@ -1,0 +1,41 @@
+* UT Documentation
+** Structures
+*** ut-conf
+    Ut conf is a hash table of values defining the various defined
+    tests. The struture of which is:
+    
+| Key Name      | Type        | Description                      |
+|---------------+-------------+----------------------------------|
+| :project-name | string      | Name of the project              |
+| :projec-dir   | string/path | Path of the project              |
+| :test-dir     | string/path | Root of the test directory       |
+| :framework    | symbol      | Default framework for unit tests |
+| :test-suites  | hash table  | Defined test suites              |
+
+     Each test suite is a hash table with the following keys:
+| Key Name          | Type                | Description                          |
+|-------------------+---------------------+--------------------------------------|
+| :test-name        | string              | Name of test suite                   |
+| :test-dir         | string/path         | Root directory of the test-suite     |
+| :framework        | symbol              | Framework of the test-suite          |
+| :build-command    | string/function/nil | Command to build the test-suite      |
+| :build-filter     | function/nil        | Function to process the build output |
+| :run-command      | string/function     | Command to run the test-suite        |
+| :run-filter       | function/nil        | Function to process the run output   |
+| :build-status     | symbol              | Status of the most recent build      |
+| :run-status       | symbol              | Status of the most recent run        |
+| :tests            | hash-table          | Table of tests within test-suite     |
+| :summarize-build  | bool                | Summarize build display              |
+| :build-start-line | integer             | (internal only)                      |
+| :build-end-line   | integer             | (internal only)                      |
+| :run-start-line   | integer             | (internal only)                      |
+| :run-end-line     | integer             | (internal only)                      |
+
+Each test is a hash table with the following keys:
+| Key Name     | Type            | Description                              |
+|--------------+-----------------+------------------------------------------|
+| :name        | string          | Name of test                             |
+| :status      | symbol          | Status of the most recent run            |
+| :file-name   | string/file/nil | File where the most recent error occured |
+| :line-number | integer         | Line where the most recent error occured |
+| :condition   | string          | Reason for test failure                  |
