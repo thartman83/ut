@@ -97,14 +97,16 @@ CU_pSuite %test-name%_test_suite();
 
 (defcustom ut-cunit-hdr-start-sentinel
   "/* START TEST PROTOTYPES */"
-  "Default string marking the beginning of test function prototypes in a cunit test suite header."
+  "Default string marking the beginning of test function prototypes in a cunit
+test suite header."
   :group 'ut-cunit
   :risky nil
   :type 'string)
 
 (defcustom ut-cunit-hdr-end-sentinel
   "/* END TEST PROTOTYPES */"
-  "Default string marking the end of test function prototypes in a cunit test suite header."
+  "Default string marking the end of test function prototypes in a cunit test
+ suite header."
   :group 'ut-cunit
   :risky nil
   :type 'string)
@@ -134,14 +136,16 @@ CU_pSuite %test-name%_test_suite()
 
 (defcustom ut-cunit-src-start-sentinel
   "/* START TEST DEFINITIONS */"
-  "Default string marking the beginning of test function definitions in a cunit test suite header."
+  "Default string marking the beginning of test function definitions in a cunit 
+test suite header."
   :group 'ut-cunit
   :risky nil
   :type 'string)
 
 (defcustom ut-cunit-src-end-sentinel
   "/* END TEST DEFINITIONS */"
-  "Default string marking the end of test function prototypes in a cunit test suite header."
+  "Default string marking the end of test function prototypes in a cunit test 
+suite header."
   :group 'ut-cunit
   :risky nil
   :type 'string)
