@@ -27,22 +27,15 @@
 (ert-deftest test-ut-new-conf ()
   (let ((bad-path "/path/to/no/where/.tests"))
     (should-error (ut-new-conf bad-path "foo" default-directory
-                               default-directory 'echo)
+                               'echo)
                   (format "Could not create new test configuration file `%s'"
                           bad-path))
     (should (not (f-exists? bad-path))))
   (with-temporary-dir
-   (should-error (ut-new-conf ".tests" "foo" default-directory "foo" 'echo)
-                 (format "Test directory `%s' does not exist" "foo"))
-   (should-error (ut-new-conf ".tests" "foo" default-directory
-                              (f-parent default-directory) 'echo)
-                 (format "Project directory `%s' is not an ancestor of"
-                         " test directory `%s'"
-                         default-directory (f-parent default-directory)))
    (make-directory "tests")
-   (let ((conf (ut-new-conf ".tests" "foo" default-directory
-                            (f-join default-directory "tests")
-                            'echo)))
+   (let ((conf (ut-parse-conf (ut-new-conf ".tests" "foo"
+                                           (f-join default-directory "tests")
+                                           'echo))))
      (should (string= (ut-project-name conf) "foo"))
      (should (f-same? (ut-project-dir conf) default-directory))
      (should (f-same? (ut-test-dir conf) (f-join default-directory "tests")))
@@ -51,7 +44,7 @@
      (should (f-exists? ".tests")))))
 
 (ert-deftest test-ut-parse-conf ()
-  (let ((conf (ut-parse-conf "tests/data/example-tests")))
+  (let ((conf (ut-parse-conf "data/example-tests")))
     (should (string= (ut-project-name conf) "Example"))
     (should (f-same? (ut-project-dir conf) "~/projects/ut"))
     (should (f-same? (ut-test-dir conf) "~/projects/ut/tests/"))
@@ -63,7 +56,6 @@
    (let ((conf (make-hash-table)))
      (f-mkdir "tests")
      (puthash :project-name "TestProject" conf)
-     (puthash :project-dir (f-expand "./") conf)
      (puthash :test-dir (f-expand "./tests") conf)
      (puthash :test-suites (ht) conf)
      (ut-write-conf conf (f-expand ".tests")))

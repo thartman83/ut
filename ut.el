@@ -235,7 +235,6 @@
   "Return t if CONF is a valid unit test configuration, nil otherwise."
   (cond ((not (ht? conf)) nil)
         ((null (ut-project-name conf)) nil)
-        ((null (ut-project-dir conf)) nil)
         ((null (ut-test-dir conf)) nil)
         ((not (ht? (ut-test-suites conf))) nil)
         ((not (-all? #'(lambda (val) (ut-test-suite-p conf val))
@@ -287,12 +286,11 @@
 
 ;; creation and manipulation functions
 
-(defun ut-new-conf (test-conf project-name project-dir test-dir framework)
+(defun ut-new-conf (test-conf project-name test-dir framework)
   "Interactively ask user for the fields to fill TEST-CONF with.
 
 Fields:
        PROJECT-NAME: name of the project to tests
-       PROJECT-DIR: root directory of the project
        TEST-DIR: root directory for the testing code
        FRAMEWORK: general testing framework for the project"
   (interactive
@@ -300,7 +298,7 @@ Fields:
                              (f-join default-directory ut-conf-name) nil
                              ut-conf-name))
           (p (read-string "Project name: "))
-          (d (read-directory-name "Project directory: " default-directory))
+          (d (f-dirname c))
           (td (read-directory-name "Test directory: "
                                    (f-join default-directory "tests")))
           (f (intern (completing-read "Framework: "
@@ -322,35 +320,37 @@ Fields:
                               (f-join d td)))
            (make-directory (f-join d td))
          (error "New ut conf creation aborted")))
-     (list c p d td f)))
-  (when (not (file-writable-p test-conf))
-    (error "Could not create new test configuration file `%s'" test-conf))
-  (when (not (f-directory? project-dir))
-    (error "Project directory `%s' does not exist" project-dir))
-  (when (not (f-directory? test-dir))
-    (error "Test directory `%s' does not exist" test-dir))
-  (when (not (f-ancestor-of? project-dir test-dir))
-    (error "Project directory `%s' is not an ancestor of test directory `%s'"
-           project-dir test-dir))
-  (when (not (memq framework ut-frameworks))
-    (error "Framework `%s' does not exist" framework))
-  (let ((conf (ht (:project-name project-name)
-                  (:project-dir project-dir)
-                  (:test-dir test-dir)
-                  (:framework framework)
-                  (:test-suites (ht)))))
-    (ut-write-conf conf test-conf)
-    (when (not (null (ut-framework-new-project-hook framework)))
-      (funcall (ut-framework-new-project-hook framework) conf))
-    test-conf))
+     (list c p td f)))
+  (let ((project-dir (f-dirname test-conf)))
+    (when (not (file-writable-p test-conf))
+      (error "Could not create new test configuration file `%s'" test-conf))
+    (when (not (f-directory? project-dir))
+      (error "Project directory `%s' does not exist" project-dir))
+    (when (not (f-directory? test-dir))
+      (error "Test directory `%s' does not exist" test-dir))
+    (when (not (f-ancestor-of? project-dir test-dir))
+      (error "Project directory `%s' is not an ancestor of test directory `%s'"
+             project-dir test-dir))
+    (when (not (memq framework ut-frameworks))
+      (error "Framework `%s' does not exist" framework))
+    (let ((conf (ht (:project-name project-name)
+                    (:project-dir project-dir)
+                    (:test-dir test-dir)
+                    (:framework framework)
+                    (:test-suites (ht)))))
+      (ut-write-conf conf test-conf)
+      (when (not (null (ut-framework-new-project-hook framework)))
+        (funcall (ut-framework-new-project-hook framework) conf))
+      test-conf)))
 
 (defun ut-parse-conf (test-conf-file)
   "Parse the TEST-CONF-FILE into a plist."
   (let ((new-conf (read (f-read-text test-conf-file 'utf-8))))
-    (if (ut-conf-p new-conf)
-      new-conf
+    (ht-set! new-conf :project-dir (f-dirname (f-expand test-conf-file)))
+    (unless (ut-conf-p new-conf)
       (error "'%s' does not specify a valid unit testing configuration"
-             test-conf-file))))
+             test-conf-file))
+    new-conf))
 
 (defun ut-reset-conf (conf)
   "Reset CONF to blank."
@@ -358,7 +358,9 @@ Fields:
 
 (defun ut-write-conf (conf path)
   "Write CONF unit testing configuration to PATH."
-  (f-write-text (format "%S" conf) 'utf-8 path))
+  (let ((to-write (ht-copy conf)))
+    (ht-remove! to-write :project-dir)
+    (f-write-text (format "%S" to-write) 'utf-8 path)))
 
 ;; Functions to manipulate the list of tests in ut-conf
 
