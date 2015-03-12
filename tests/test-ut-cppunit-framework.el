@@ -17,15 +17,24 @@
 
 ;; 
 
-(require 'test-helpers)
-(require 'ut-cppunit-framework (f-join ut-source-dir "ut-cppunit-framework"))
+(require 'f)
+(require 'test-helpers (f-join default-directory "test-helpers"))
+(require 'ut-cppunit-framework (f-join default-directory "../" "ut-cppunit-framework"))
+
+(ert-deftest ut-test-custom-files-exist ()
+  (mapc #'(lambda (custom-file) (should (f-exists? (f-join "../m4/" custom-file))))
+        (list ut-cppunit-default-top-makefile.am
+              ut-cppunit-default-src-makefile.am
+              ut-cppunit-default-main.cc
+              ut-cppunit-default-test-suite.hh
+              ut-cppunit-default-test-suite.cc
+              ut-cppunit-add-test-hdr-text
+              ut-cppunit-add-test-src-text)))
 
 (ert-deftest ut-test-new-cppunit-project ()
-  (ut-reset-conf)
   (with-temporary-dir
    (make-directory "tests")
-   (ut-new-conf ".tests" "fooProject" (f-expand default-directory)
-                (f-join (f-expand default-directory) "tests") 'cppunit)
+   (ut-new-conf "./.tests" "fooProject" (f-join (f-expand default-directory) "tests") 'cppunit)
    (should (f-directory? (f-join (f-expand default-directory) "tests")))
    (should (f-exists? (f-join (f-expand default-directory) "tests/Makefile.am")))))
 

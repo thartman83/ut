@@ -354,7 +354,7 @@ Fields:
 
 (defun ut-reset-conf (conf)
   "Reset CONF to blank."
-  (setf conf (make-hash-table)))
+  (ht-clear! conf))
 
 (defun ut-write-conf (conf path)
   "Write CONF unit testing configuration to PATH."
@@ -840,9 +840,9 @@ https//github.com/flycheck/"
   "Draw the complete unit testing for buffer BUF."
   (with-current-buffer buf
     (let ((inhibit-read-only t)
-          (line-number (line-number-at-pos))
           (conf (buffer-local-value 'ut-conf buf)))
-      (erase-buffer)
+      (save-excursion
+        (erase-buffer)
         (ut-draw-header conf)
         (insert "\n")
         (maphash #'(lambda (key test-suite)
@@ -851,8 +851,7 @@ https//github.com/flycheck/"
                  (ut-test-suites conf))
         (insert "\n")
         (ut-draw-summary (ut-test-suites conf))
-        (goto-line line-number)
-        (ut-write-conf conf (f-join (ut-project-dir conf) ut-conf-name)))))
+        (ut-write-conf conf (f-join (ut-project-dir conf) ut-conf-name))))))
 
 (defun ut-draw-buffer-interactive ()
   "Draw the complete unit testing buffer based on the local buffer variable ut-conf."

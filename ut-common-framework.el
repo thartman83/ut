@@ -19,6 +19,7 @@
 
 ;;; Code:
 
+(require 's)
 (require 'f)
 (require 'ht)
 (require 'dash)
@@ -111,7 +112,8 @@ AC_OUTPUT")
       (error "%s does not contain AC_OUTPUT, may not be autoconf file" configure.ac))
     (let ((i (match-beginning 0))
           (j (match-end 0)))
-      (when (not (string-match (format "AC_CONFIG_FILES(\\[%s/Makefile\\])" subdir) text))
+      (when (not (string-match (format "AC_CONFIG_FILES(\\[%s/Makefile\\])" subdir)
+                               text))
         (f-write (concat (substring text 0 i)
                          (format "# %s\n" subdir)
                          (format "AC_CONFIG_FILES([%s/Makefile])\n" subdir)
@@ -130,13 +132,13 @@ AC_OUTPUT")
 
 (defun ut-find-line-in-file (str file-name)
   "Find the zero index line number of the first occurance of STR in FILE-NAME."
-  (position str (split-string (f-read-text file-name) "\n") :test #'string=))
+  (cl-position str (split-string (f-read-text file-name) "\n") :test #'string=))
 
 (defun ut-insert-into-file (str file-name line-number)
   "Insert STR into FILE-NAME at LINE-NUMBER."
   (let ((lines (split-string (f-read-text file-name) "\n")))
-    (f-write-text (mapconcat #'identity (-insert-at line-number str lines) "\n") 'utf-8
-                  file-name)))
+    (f-write-text (mapconcat #'identity (-insert-at line-number str lines) "\n")
+                  'utf-8 file-name)))
 
 (defun ut-autoreconf (path)
   "Run autoreconf -i from the PATH."
@@ -146,12 +148,41 @@ AC_OUTPUT")
 (defun ut-check-open-save-abort (file-name)
   "Check to see if FILE-NAME is open in a buffer, prompts user to save and or abort operation."
   (let ((buf (get-file-buffer file-name)))
-    (when (and (not (null buf)) (buffer-modified-p buf))  ; src file already open in buffer
-      (if (yes-or-no-p (format "Would you like to save %s before continuing? " file-name))
+    ; src file already open in buffer
+    (when (and (not (null buf)) (buffer-modified-p buf))
+      (if (yes-or-no-p (format "Would you like to save %s before continuing? "
+                               file-name))
           (with-current-buffer buf
             (save-buffer))
         (when (yes-or-no-p "Abort adding new test? ")
           (error "User aborted adding new test"))))))
+
+(defun ut-revert-switch-buffer (file-name)
+  "Check if FILE-NAME is open in a buffer.  Revert and switch to buffer if needed."
+  (let ((buf (get-file-buffer file-name)))
+    (if (and buf (get-buffer-window buf))
+        (with-current-buffer buf
+          (revert-buffer t nil t))
+      (switch-to-buffer-other-window (find-file-noselect file-name)))))
+
+(defun ut-m4-expand-text (text defines destination)
+  "Expand TEXT using the hash table DEFINES key value pairs as expansion definitions to DESTINATION."
+  (with-temp-buffer
+    (kill-region (point-min) (point-max))
+    (insert
+     (mapconcat #'identity
+                (ht-map #'(lambda (key val)
+                            (format "define(`%s', %s)"
+                                    (s-replace "-" "_" (subseq (symbol-name key) 1))
+                                    val))
+                        defines)
+                "\n")
+     "\n" text)
+    (call-process-region (point-min) (point-max) "m4" t destination t "-")))
+
+(defun ut-m4-expand-file (file defines destination)
+  "Expand FILE using the hash table DEFINES key value pairs as expansion definitions to DESTINATION."
+  (ut-m4-expand-text (f-read-text file) defines destination))
 
 (provide 'ut-common-framework)
 
