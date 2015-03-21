@@ -192,6 +192,14 @@
     (31 . sigxfsz))
   "A-list of unix signals numbers and names.")
 
+(defvar ut--pkg-root (f-dirname (or load-file-name (buffer-file-name)))
+  "Base directory of the ut package.")
+
+(defcustom ut-m4-dir (f-join ut--pkg-root "m4")
+  "Path to the root of the m4 files for frameworks."
+  :group 'ut
+  :type 'string)
+
 ;; Logging Functions
 
 (defun ut-log-message (msg &rest args)

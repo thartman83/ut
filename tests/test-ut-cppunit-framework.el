@@ -21,6 +21,33 @@
 (require 'test-helpers (f-join default-directory "test-helpers"))
 (require 'ut-cppunit-framework (f-join default-directory "../" "ut-cppunit-framework"))
 
+;; Test m4 expansion files
+
+(ert-deftest ut-test-cppunit-src-makefile.am ()
+  (with-temp-buffer
+    (ut-m4-expand-file (f-join default-directory "../m4/ut-cppunit-default-top-makefile_am.m4")
+                       (ht)
+                       (current-buffer))
+    (should (string= (f-read-text (f-join default-directory "data/cppunit-top-makefile.am"))
+                     (buffer-substring (point-min) (point-max))))))
+
+(ert-deftest ut-test-cppunit-top-makefile.am ()
+  (with-temp-buffer
+    (ut-m4-expand-file (f-join default-directory "../m4/ut-cppunit-default-src-makefile_am.m4")
+                       (ht (:project-dir "/home/someone/projects/foo")
+                           (:test-name "bar"))
+                       (current-buffer))
+    (should (string= (f-read-text (f-join default-directory "data/cppunit-src-makefile.am"))
+                     (buffer-substring (point-min) (point-max))))))
+
+(ert-defm4test ut-test-cppunit-main.cc "ut-cppunit-default-main_cc.m4"
+               (ht (:file_name "main.cc")
+                   (:project-name "utCppunitFrameworkTests")
+                   (:full-name "Thomas Hartman")
+                   (:email "thomas.lees.hartman@gmail.com")
+                   (:test-name "foo"))
+               "cppunit-main.cc")
+
 (ert-deftest ut-test-custom-files-exist ()
   (mapc #'(lambda (custom-file) (should (f-exists? (f-join "../m4/" custom-file))))
         (list ut-cppunit-default-top-makefile.am

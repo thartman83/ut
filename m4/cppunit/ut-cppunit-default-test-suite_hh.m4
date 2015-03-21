@@ -1,3 +1,4 @@
+include(`ut-cppunit-license.m4')
 `#'ifndef upcase(test_name)TESTS_HH_
 `#'define upcase(test_name)TESTS_HH_
 `#'include <cppunit/TestFixture.h>

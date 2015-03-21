@@ -165,24 +165,22 @@ AC_OUTPUT")
           (revert-buffer t nil t))
       (switch-to-buffer-other-window (find-file-noselect file-name)))))
 
-(defun ut-m4-expand-text (text defines destination)
-  "Expand TEXT using the hash table DEFINES key value pairs as expansion definitions to DESTINATION."
+(defun ut-m4-expand-text (text destination defines)
+  "Expand TEXT to DESTINATION using the hash table DEFINES key value pairs as expansion definitions."
   (with-temp-buffer
     (kill-region (point-min) (point-max))
-    (insert
-     (mapconcat #'identity
-                (ht-map #'(lambda (key val)
-                            (format "define(`%s', %s)"
-                                    (s-replace "-" "_" (subseq (symbol-name key) 1))
-                                    val))
-                        defines)
-                "\n")
-     "\n" text)
-    (call-process-region (point-min) (point-max) "m4" t destination t "-")))
+    (insert text)
+    (let ((arg-list
+           (ht-map #'(lambda (key val)
+                       (format "-D%s=%s" (s-replace "-" "_" (subseq (symbol-name key) 1)) val))
+                   defines)))
+      (apply #'call-process-region (append (list (point-min) (point-max) "m4" t destination t)
+                                           arg-list
+                                           (list "-"))))))
 
-(defun ut-m4-expand-file (file defines destination)
-  "Expand FILE using the hash table DEFINES key value pairs as expansion definitions to DESTINATION."
-  (ut-m4-expand-text (f-read-text file) defines destination))
+(defun ut-m4-expand-file (file framework-name destination defines)
+  "Expand FILE found in the m4 FRAMEWORK-NAME FOLDER to DESTINATION using the hash table DEFINES key value pairs."
+  (ut-m4-expand-text (f-read-text (f-join ut-m4-dir framework-name file)) defines destination))
 
 (provide 'ut-common-framework)
 
