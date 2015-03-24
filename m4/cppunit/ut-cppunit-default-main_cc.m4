@@ -1,4 +1,4 @@
-include(`../m4/ut-cppunit-license.m4')
+include(license_file)
 `#'include <cppunit/extensions/TestFactoryRegistry.h>
 `#'include <cppunit/CompilerOutputter.h>
 `#'include <cppunit/TestResult.h>

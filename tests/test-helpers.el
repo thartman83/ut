@@ -81,11 +81,11 @@ Code somewhat pilfered from test-helper.el from flycheck
                            (eval-buffer)))
         *ut-test-files*))
 
-(defmacro ert-defm4test (test-name m4-file defines expected-output)
-  "Create a `ert-deftest' TEST-NAME to compare the output of M4-FILE using DEFINES to EXPECTED-OUTPUT."
+(defmacro ert-defm4test (test-name framework-name m4-file defines expected-output)
+  "Create a `ert-deftest' TEST-NAME to compare the output of FRAMEWORK-NAME/M4-FILE using DEFINES to EXPECTED-OUTPUT."
   `(ert-deftest ,test-name ()
      (with-temp-buffer
-       (ut-m4-expand-file (f-join default-directory "../m4" ,m4-file) ,defines
+       (ut-m4-expand-file framework-name (f-join default-directory "../m4" ,m4-file) ,defines
                           (current-buffer))
        (should (string= (f-read-text (f-join default-directory "data" ,expected-output))
                         (buffer-substring (point-min) (point-max)))))))

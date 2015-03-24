@@ -178,8 +178,8 @@ AC_OUTPUT")
                                            arg-list
                                            (list "-"))))))
 
-(defun ut-m4-expand-file (file framework-name destination defines)
-  "Expand FILE found in the m4 FRAMEWORK-NAME FOLDER to DESTINATION using the hash table DEFINES key value pairs."
+(defun ut-m4-expand-file (framework-name file destination defines)
+  "Expand FRAMEWORK-NAME/FILE to DESTINATION using the hash table DEFINES key value pairs."
   (ut-m4-expand-text (f-read-text (f-join ut-m4-dir framework-name file)) defines destination))
 
 (provide 'ut-common-framework)

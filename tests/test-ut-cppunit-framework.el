@@ -45,7 +45,8 @@
                    (:project-name "utCppunitFrameworkTests")
                    (:full-name "Thomas Hartman")
                    (:email "thomas.lees.hartman@gmail.com")
-                   (:test-name "foo"))
+                   (:test-name "foo")
+                   (:license-file (f-join ut-m4-dir "licenses/ut-gpl2-license.m4")))
                "cppunit-main.cc")
 
 (ert-deftest ut-test-custom-files-exist ()
