@@ -1,11 +1,11 @@
-include(license_file)
+license_info
 `#'include <cppunit/extensions/TestFactoryRegistry.h>
 `#'include <cppunit/CompilerOutputter.h>
 `#'include <cppunit/TestResult.h>
 `#'include <cppunit/TestResultCollector.h>
 `#'include <cppunit/TestRunner.h>
 `#'include <cppunitsexpoutputter/SexpOutputter.h>
-`#'include \"test_name`'Tests.hh\"
+`#'include "test_suite`'Tests.hh"
 
 int main(int argc, char *argv[])
 {

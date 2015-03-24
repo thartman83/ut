@@ -1,4 +1,4 @@
 AM_CPPFLAGS = -I`'project_dir/src -I/usr/local/include/
-bin_PROGRAMS = test_name`'Tests
-test_name`'_SOURCES = main.cc test_name`'Tests.cc test_name`'Tests.hh
-test_name`'_LDADD = -L/usr/local/lib/ -lcppunit -lcppunitsexpoutputter
+bin_PROGRAMS = test_suite`'Tests
+test_suite`'_SOURCES = main.cc test_suite`'Tests.cc test_suite`'Tests.hh
+test_suite`'_LDADD = -L/usr/local/lib/ -lcppunit -lcppunitsexpoutputter

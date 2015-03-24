@@ -82,12 +82,15 @@ Code somewhat pilfered from test-helper.el from flycheck
         *ut-test-files*))
 
 (defmacro ert-defm4test (test-name framework-name m4-file defines expected-output)
-  "Create a `ert-deftest' TEST-NAME to compare the output of FRAMEWORK-NAME/M4-FILE using DEFINES to EXPECTED-OUTPUT."
+  "Create a `ert-deftest' TEST-NAME.
+
+Compare the output of FRAMEWORK-NAME/M4-FILE using DEFINES to EXPECTED-OUTPUT.
+If INCLUDEPATHS is non-nil pass it to ut-m4-expand."
   `(ert-deftest ,test-name ()
      (with-temp-buffer
-       (ut-m4-expand-file framework-name (f-join default-directory "../m4" ,m4-file) ,defines
-                          (current-buffer))
-       (should (string= (f-read-text (f-join default-directory "data" ,expected-output))
+       (ut-m4-expand-file ,framework-name ,m4-file ,defines (current-buffer))
+       (should (string= (f-read-text (f-join default-directory "data"
+                                             ,expected-output))
                         (buffer-substring (point-min) (point-max)))))))
 
 (provide 'test-helpers)

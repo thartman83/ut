@@ -34,7 +34,7 @@
   :risky t
   :type 'string)
 
-(defcustom ut-cppunit-default-src-makefile.am "ut-cppunit-default-makefile_am.m4"
+(defcustom ut-cppunit-default-src-makefile.am "ut-cppunit-default-src-makefile_am.m4"
   "Default src level makefile for a test suite."
   :group 'ut-cppunit
   :risky t
@@ -64,8 +64,14 @@
   :risky t
   :type 'string)
 
-(defcustom ut-cppunit-add-test-src-text "ut-cppunit-add-test-src-text.m4"
-  "Default new src definition of a test function."
+(defcustom ut-cppunit-test-proto-text "ut-cppunit-test-proto-text.m4"
+  "Default prototype definition of a test function."
+  :group 'ut-cppunit
+  :risky t
+  :type 'string)
+
+(defcustom ut-cppunit-test-impl-text "ut-cppunit-test-impl-text.m4"
+  "Default implementation definition of a test function."
   :group 'ut-cppunit
   :risky t
   :type 'string)

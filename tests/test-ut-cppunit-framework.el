@@ -19,45 +19,72 @@
 
 (require 'f)
 (require 'test-helpers (f-join default-directory "test-helpers"))
-(require 'ut-cppunit-framework (f-join default-directory "../" "ut-cppunit-framework"))
+(require 'ut-cppunit-framework (f-join default-directory
+                                       "../" "ut-cppunit-framework"))
 
 ;; Test m4 expansion files
 
-(ert-deftest ut-test-cppunit-src-makefile.am ()
-  (with-temp-buffer
-    (ut-m4-expand-file (f-join default-directory "../m4/ut-cppunit-default-top-makefile_am.m4")
-                       (ht)
-                       (current-buffer))
-    (should (string= (f-read-text (f-join default-directory "data/cppunit-top-makefile.am"))
-                     (buffer-substring (point-min) (point-max))))))
-
-(ert-deftest ut-test-cppunit-top-makefile.am ()
-  (with-temp-buffer
-    (ut-m4-expand-file (f-join default-directory "../m4/ut-cppunit-default-src-makefile_am.m4")
-                       (ht (:project-dir "/home/someone/projects/foo")
-                           (:test-name "bar"))
-                       (current-buffer))
-    (should (string= (f-read-text (f-join default-directory "data/cppunit-src-makefile.am"))
-                     (buffer-substring (point-min) (point-max))))))
-
-(ert-defm4test ut-test-cppunit-main.cc "ut-cppunit-default-main_cc.m4"
-               (ht (:file_name "main.cc")
-                   (:project-name "utCppunitFrameworkTests")
-                   (:full-name "Thomas Hartman")
-                   (:email "thomas.lees.hartman@gmail.com")
-                   (:test-name "foo")
-                   (:license-file (f-join ut-m4-dir "licenses/ut-gpl2-license.m4")))
-               "cppunit-main.cc")
-
-(ert-deftest ut-test-custom-files-exist ()
-  (mapc #'(lambda (custom-file) (should (f-exists? (f-join "../m4/" custom-file))))
+(ert-deftest ut-test-cppunit-m4-files-exist ()
+  (mapc #'(lambda (custom-file)
+            (should (f-exists? (f-join "../m4/cppunit/" custom-file))))
         (list ut-cppunit-default-top-makefile.am
               ut-cppunit-default-src-makefile.am
               ut-cppunit-default-main.cc
               ut-cppunit-default-test-suite.hh
               ut-cppunit-default-test-suite.cc
               ut-cppunit-add-test-hdr-text
-              ut-cppunit-add-test-src-text)))
+              ut-cppunit-test-proto-text
+              ut-cppunit-test-impl-text)))
+
+(ert-defm4test ut-test-cppunit-top-makefile.am "cppunit"
+               ut-cppunit-default-top-makefile.am
+               (ht)
+               "cppunit-top-makefile.am")
+
+(ert-defm4test ut-test-cppunit-src-makefile.am "cppunit"
+               ut-cppunit-default-src-makefile.am
+               (ht (:project-dir "/home/someone/projects/foo")
+                   (:test-suite "bar"))
+               "cppunit-src-makefile.am")
+
+(ert-defm4test ut-test-cppunit-main.cc "cppunit" ut-cppunit-default-main.cc
+               (ht (:project-name "utCppunitFrameworkTests")
+                   (:test-suite "foo")
+                   (:license-info "LICENSE"))
+               "cppunit-main.cc")
+
+(ert-defm4test ut-test-cppunit-default-test-suite.hh "cppunit"
+               ut-cppunit-default-test-suite.hh
+               (ht (:project-name "utCppunitFrameworkTests")
+                   (:test-suite "Foo")
+                   (:license-info "LICENSE"))
+               "cppunit-test-suite.hh")
+
+(ert-defm4test ut-test-cppunit-default-test-suite.cc "cppunit"
+               ut-cppunit-default-test-suite.cc
+               (ht (:project-name "utCppunitFrameworkTests")
+                   (:test-suite "Foo")
+                   (:license-info "LICENSE"))
+               "cppunit-test-suite.cc")
+
+(ert-defm4test ut-test-cppunit-add-test-hdr-text "cppunit"
+               ut-cppunit-add-test-hdr-text
+               (ht (:test-name "TestBar")
+                   (:license-info "LICENSE"))
+               "cppunit-test-hdr-text")
+
+(ert-defm4test ut-test-cppunit-test-proto-text "cppunit"
+               ut-cppunit-test-proto-text
+               (ht (:test-name "TestBar")
+                   (:license-info "LICENSE"))
+               "cppunit-test-proto-text")
+
+(ert-defm4test ut-test-cppunit-test-impl-text "cppunit"
+               ut-cppunit-test-impl-text
+               (ht (:test-suite "Foo")
+                   (:test-name "TestBar")
+                   (:license-info "LICENSE"))
+               "cppunit-test-impl-text")
 
 (ert-deftest ut-test-new-cppunit-project ()
   (with-temporary-dir

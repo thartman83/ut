@@ -1,20 +1,20 @@
-include(`ut-cppunit-license.m4')
-`#'ifndef upcase(test_name)TESTS_HH_
-`#'define upcase(test_name)TESTS_HH_
+license_info
+`#'ifndef translit(test_suite, `a-z', `A-Z')TESTS_HH_
+`#'define translit(test_suite, `a-z', `A-Z')TESTS_HH_
 `#'include <cppunit/TestFixture.h>
 `#'include <cppunit/extensions/HelperMacros.h>
 
-class test_name`'Tests : public CppUnit::TestFixture
+class test_suite`'Tests : public CppUnit::TestFixture
 {
-\tCPPUNIT_TEST_SUITE(test_name`'Tests);
-\tCPPUNIT_TEST_SUITE_END();
+   CPPUNIT_TEST_SUITE(test_suite`'Tests);
+   CPPUNIT_TEST_SUITE_END();
 
 public:
-\tvoid setup();
-\tvoid tearDown();
+   void setup();
+   void tearDown();
 
 };
 
-CPPUNIT_TEST_SUITE_REGISTRATION(test_name`'Tests);
+CPPUNIT_TEST_SUITE_REGISTRATION(test_suite`'Tests);
 
-`#'endif /* upcase(test_name)TESTS_HH_ */
+`#'endif /* translit(test_suite, `a-z', `A-Z')TESTS_HH_ */

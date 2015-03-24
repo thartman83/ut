@@ -1,11 +1,11 @@
-include(`ut-cppunit-license.m4')
-`#'include \"test_name`'Tests.hh\"
-`#'include <test_name.hh>
+license_info
+`#'include <test_suite.hh>
+`#'include "test_suite`'Tests.hh"
 
-void test_name`'Tests::setup()
+void test_suite`'Tests::setup()
 {
 }
 
-void test_name`'Tests::tearDown()
+void test_suite`'Tests::tearDown()
 {
 }
