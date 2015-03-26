@@ -89,7 +89,7 @@ If INCLUDEPATHS is non-nil pass it to ut-m4-expand."
   `(ert-deftest ,test-name ()
      (with-temp-buffer
        (ut-m4-expand-file ,framework-name ,m4-file ,defines (current-buffer))
-       (should (string= (f-read-text (f-join default-directory "data"
+       (should (string= (f-read-text (f-join ut--pkg-root "tests/data"
                                              ,expected-output))
                         (buffer-substring (point-min) (point-max)))))))
 

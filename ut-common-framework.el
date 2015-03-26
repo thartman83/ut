@@ -24,57 +24,42 @@
 (require 'ht)
 (require 'dash)
 
-(defun copyright (file-name test-name project-name)
-  "Return the copyright information.
-Using FILE-NAME, TEST-NAME, and PROJECT-NAME"
-  (list (concat " " file-name " --- " test-name " unit tests for " project-name)
-        (concat " Copyright (c) 2013 " *full-name* " (" *email* ")")))
+(defcustom ut-email "EmaNymton@example.com"
+  "Personal e-mail address information for user."
+  :group 'ut
+  :type 'string)
 
-(defvar gplv2-license
-  '(" This program is free software; you can redistribute it and/or"
-    " modify it under the terms of the GNU General Public License"
-    " as published by the Free Software Foundation; either version 2"
-    " of the License, or the License, or (at your option) any later"
-    " version."
-    ""
-    " This program is distributed in the hope that it will be useful"
-    " but WITHOUT ANY WARRANTY; without even the implied warranty of"
-    " MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the"
-    " GNU General Public License for more details."))
+(defcustom ut-full-name "Ema Nymton"
+  "Full name of user."
+  :group 'ut
+  :type 'string)
 
-(defvar default-makefile.am
-  "AUTOMAKE_OPTIONS = 1.4
-ACLOCAL_AMFLAGS = -I config
+(defcustom ut-default-copyright "default-copyright.m4"
+  "Default copyright information for a new file."
+  :group 'ut
+  :type 'string)
 
-SUBDIRS =
+(defcustom ut-default-makefile.am "ut-default-makefile_am.m4"
+  "Contents of a default makefile.am."
+  :group 'ut
+  :risky t
+  :type 'string)
 
-EXTRA_DIST = BUGS INSTALL-unix $(m4sources)")
+(defcustom ut-default-configure.ac "ut-default-configure_ac.m4"
+  "Contents of a default configure.ac"
+  :group 'ut
+  :risky t
+  :type 'string)
 
-(defvar default-configure.ac
-"dnl Process this file with autoconf to produce a configure script.
+(defun ut-get-copyright ()
+  "Return the expanded copyright text."
+  (with-temp-buffer
+    (ut-m4-expand "common" ut-default-copyright
+                  (ht (:ut-full-name ut-full-name)
+                      (:ut-email ut-email)))
+    (buffer-substring (point-min) (point-max))))
 
-AC_PREREQ(2.26)
 
-m4_define([%project-name%_major_version], [0])
-m4_define([%project-name%_minor_version], [1])
-m4_define([%project-name%_version], \\
-          [%project-name%_major_version.%project-name%_minor_version])
-
-AC_INIT([%project-name%],[1.0])
-AC_CONFIG_MACRO_DIR([config])
-AM_INIT_AUTOMAKE([1.11 dist-bzip2])
-LT_PREREQ([2.2])
-LT_INIT([dlopen])
-
-AC_SUBST(%PROJECT-NAME%_MAJOR_VERSION, [%project-name%_major_version])
-AC_SUBST(%PROJECT-NAME%_MINOR_VERSION, [%project-name%_minor_version])
-AC_SUBST(%PROJECT-NAME%_VERSION, [%project-name%_version])
-
-dnl Check for programs
-
-AC_CONFIG_FILES([Makefile])
-
-AC_OUTPUT")
 
 (defun ut-generate-default-makefile.am (dir)
   (interactive "DProject root: ")

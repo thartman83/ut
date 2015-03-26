@@ -28,6 +28,12 @@
   :prefix "ut-cppunit"
   :group 'ut)
 
+(defcustom ut-cppunit-default-configure.ac "ut-cppunit-default-configure_ac.m4"
+  "Default text for project level configure.ac."
+  :group 'ut-cppunit
+  :risky t
+  :type 'string)
+
 (defcustom ut-cppunit-default-top-makefile.am "ut-cppunit-default-top-makefile_am.m4"
   "Default value of the top makefile for a test suite."
   :group 'ut-cppunit

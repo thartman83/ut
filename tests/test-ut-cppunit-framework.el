@@ -18,16 +18,16 @@
 ;; 
 
 (require 'f)
-(require 'test-helpers (f-join default-directory "test-helpers"))
-(require 'ut-cppunit-framework (f-join default-directory
-                                       "../" "ut-cppunit-framework"))
+(require 'test-helpers)
+(require 'ut-cppunit-framework)
 
 ;; Test m4 expansion files
 
 (ert-deftest ut-test-cppunit-m4-files-exist ()
   (mapc #'(lambda (custom-file)
-            (should (f-exists? (f-join "../m4/cppunit/" custom-file))))
-        (list ut-cppunit-default-top-makefile.am
+            (should (f-exists? (f-join ut-m4-dir "cppunit/" custom-file))))
+        (list ut-cppunit-default-configure.ac
+              ut-cppunit-default-top-makefile.am
               ut-cppunit-default-src-makefile.am
               ut-cppunit-default-main.cc
               ut-cppunit-default-test-suite.hh
@@ -35,6 +35,11 @@
               ut-cppunit-add-test-hdr-text
               ut-cppunit-test-proto-text
               ut-cppunit-test-impl-text)))
+
+(ert-defm4test ut-test-cppunit-default-configure.ac "cppunit"
+               ut-cppunit-default-configure.ac
+               (ht (:project-name "Foo"))
+               "cppunit-configure.ac")
 
 (ert-defm4test ut-test-cppunit-top-makefile.am "cppunit"
                ut-cppunit-default-top-makefile.am
@@ -202,54 +207,6 @@
                                   "AC_CONFIG_FILES([fooTests/Makefile])"
                                   "AC_CONFIG_FILES([fooTests/src/Makefile])"))
                     '(1 1 1))))))
-
-(defvar ut-test-configure.ac (mapconcat #'identity '("AC_PREREQ(2.26)"
-                                                     "AC_INIT([fooProject],[1.0])"
-                                                     "AC_CONFIG_MACRO_DIR([config])"
-                                                     "AM_INIT_AUTOMAKE([1.11])"
-                                                     "AC_LANG([C++])"
-                                                     ""
-                                                     "AC_PROG_MAKE_SET"
-                                                     "AC_PROG_INSTALL"
-                                                     "AC_PROG_CC"
-                                                     "AC_PROG_CXX"
-                                                     "PKG_CHECK_MODULES([CPPUNIT], [cppunit])"
-                                                     "AC_LANG(C++)"
-                                                     "AC_PROG_LIBTOOL"
-                                                     "AC_LTDL_DLLIB"
-                                                     "AC_CONFIG_FILES([Makefile])"
-                                                     "AC_CONFIG_FILES([src/Makefile])"
-                                                     "AC_CONFIG_FILES([tests/Makefile])"
-                                                     "AC_OUTPUT")
-                                        "\n"))
-
-(defvar ut-test-makefile.am (concat "AUTOMAKE_OPTIONS = 1.4\n"
-                                    "ACLOCAL_AMFLAGS = -I config\n\n"
-                                    "SUBDIRS = src tests"))
-
-(defvar ut-test-src-makefile.am (concat "bin_PROGRAMS = foo\n"
-                                        "foo_SOURCES = main.cc foo.cc"))
-
-(defvar ut-test-cppheader (concat  "#ifndef FOO_HH\n"
-                                   "#define FOO_HH\n"
-                                   "#include <string>\n"
-                                   "class Foo {\n"
-                                   "public:\n"
-                                   "Foo(std::string s);\n"
-                                   "std::string getFoo();\n"
-                                   "private:\n"
-                                   "std::string _s;\n"
-                                   "};\n"
-                                   "#endif//FOO_HH"))
-
-(defvar ut-test-cppsource (concat  "#include \"foo.hh\"\n\nFoo::Foo(std::string s) {_s = s;}\n\n"
-                                   "std::string Foo::getFoo() {return _s;}"))
-
-(defvar ut-test-mainsource (concat "#include \"foo.hh\"\n"
-                                   "int main(int argc, char ** argv) {\n"
-                                   "Foo f(\"foo\");\n"
-                                   "return 0;\n"
-                                   "}\n"))
 
 ;;; Code:
 
