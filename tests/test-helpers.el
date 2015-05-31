@@ -50,6 +50,49 @@
            (should nil))
        (error (should (string= (error-message-string ,err) ,expected))))))
 
+(defun get-new-dir-name (path)
+  "Return an unused random directory name in PATH."
+  (let ((rand-str (get-random-string 6)))
+    (if (not (f-directory? (f-join path rand-str)))
+        (f-join path rand-str)
+      (org-fc/get-new-dir-name path))))
+
+(defun get-random-string (length)
+  "Return a random string of letters and number of size LENGTH."
+  (let ((chars "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"))
+    (if (= length 1)
+        (string (elt chars (random (length chars))))
+      (concat (string (elt chars (random (length chars))))
+              (get-random-string (1- length))))))
+
+(defmacro with-temporary-dir (&rest body)
+  "Create a temporary directory in pwd and execute BODY in pwd.
+Removes directory and its contents at the end of execution.
+Returns the value of body."
+  (let ((olddir default-directory)
+        (dir (get-new-dir-name default-directory)))
+    `(unwind-protect
+         (progn
+           (make-directory ,dir)
+           (cd ,dir)
+           ,@body)
+       (progn (cd ,olddir)
+              (when (file-exists-p ,dir)
+               (delete-directory ,dir t))))))
+
+(def-edebug-spec with-temporary-dir (body))
+
+(defmacro save-current-directory (&rest body)
+  "Preserve PWD while executing BODY.
+Any change in directory during the course of executing BODY is reverted at the
+end of the block."
+  `(let ((olddir default-directory))
+     (unwind-protect
+         ,@body
+       (cd olddir))))
+
+(def-edebug-spec save-current-directory (body))
+
 (defun ut-test-wait-for-process (process-name)
   "Return when the process identified as PROCESS-NAME finishes.
 

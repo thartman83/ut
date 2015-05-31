@@ -65,13 +65,13 @@
   (interactive "DProject root: ")
   (when (f-exists? (f-join dir "Makefile.am"))
     (error "%s already exists, will not clobber" (f-join dir "Makefile.am")))
-  (f-write-text default-makefile.am 'utf-8 (f-join dir "Makefile.am")))
+  (f-write-text ut-default-makefile.am 'utf-8 (f-join dir "Makefile.am")))
 
 (defun ut-generate-default-configure.ac (dir project-name)
   (interactive "DProject root: \nsProject name: ")
   (when (f-exists? (f-join dir "configure.ac"))
     (error "%s already exists, will not clobber" (f-join dir "configure.ac")))
-  (f-write-text (ut-format default-configure.ac
+  (f-write-text (ut-format ut-default-configure.ac
                             (ht (:project-name project-name)))
                 'utf-8 "configure.ac"))
 

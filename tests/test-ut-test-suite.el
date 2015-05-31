@@ -18,27 +18,27 @@
 ;;; Code:
 
 (require 'test-helpers)
-(require 'file-utils)
 
 ;; test test-suite addition and removal functions
 
 (ert-deftest test-ut-new-test-suite ()
   (with-temporary-dir
    (make-directory "tests")
-   (let ((conf (ut-new-conf ".tests" "foo" (f-expand "./") (f-expand "./tests") 'echo)))
+   (let ((conf (ut-parse-conf (ut-new-conf ".tests" "foo" (f-expand "./tests") 'echo))))
      (should (= (ut-test-suite-count conf) 0))
      (ut-new-test-suite conf "foo" (f-expand "./tests/foo") 'echo)
      (should (ut-test-suite-p conf (ut-get-test-suite conf "foo")))
      (should (= (ut-test-suite-count conf) 1))
      (should (ut-test-suite-exists-p conf "foo"))
-     (should (string= (f-join (ut-test-dir conf) (ut-test-suite-test-dir (ut-get-test-suite conf "foo")))
+     (should (string= (f-join (ut-test-dir conf)
+                              (ut-test-suite-test-dir (ut-get-test-suite conf "foo")))
                       (f-expand "./tests/foo")))
      (should (equal (ut-test-suite-framework (ut-get-test-suite conf "foo")) 'echo)))))
 
 (ert-deftest test-ut-adding-and-deleting-suites ()
   (with-temporary-dir
    (make-directory "tests")
-   (let ((conf (ut-new-conf ".tests" "foo" (f-expand "./") (f-expand "./tests") 'echo)))
+   (let ((conf (ut-parse-conf (ut-new-conf ".tests" "foo" (f-expand "./tests") 'echo))))
      (should (= (ut-test-suite-count conf) 0))
      (ut-new-test-suite conf "foo" (f-expand "./tests/foo") 'echo)
      (should (= (ut-test-suite-count conf) 1))
@@ -49,7 +49,7 @@
   (with-temporary-dir
    (make-directory "tests")
    (push 'echo ut-frameworks)
-   (let ((conf (ut-new-conf ".tests" "foo" (f-expand "./") (f-expand "./tests") 'echo)))
+   (let ((conf (ut-parse-conf (ut-new-conf ".tests" "foo" (f-expand "./tests") 'echo))))
      (should (= (ut-test-suite-count conf) 0))
      (should-error (ut-del-test-suite conf "foo")
                    "Test suite 'foo' does not exist")
@@ -63,7 +63,7 @@
 (ert-deftest test-ut-get-test-suite ()
   (with-temporary-dir
    (make-directory "tests")
-   (let ((conf (ut-new-conf ".tests" "foo" (f-expand "./") (f-expand "./tests") 'echo)))
+   (let ((conf (ut-parse-conf (ut-new-conf ".tests" "foo" (f-expand "./tests") 'echo))))
      (let ((suite (ut-new-test-suite conf "foo" (f-expand "./tests/foo") 'echo)))
        (should (not (null (ut-get-test-suite conf "foo")))))
      (let ((suite (ut-new-test-suite conf "bar" (f-expand "./tests/bar") 'echo)))

@@ -1,6 +1,38 @@
-* UT Documentation
-** Structures
-*** ut-conf
+#+TITLE: UT the emacs unified unit testing environment
+#+AUTHOR: Tom Hartman
+
+* Overview
+
+* Frameworks
+
+  UT mode relys on various frameworks to define how to interact with
+specific unit testing packages. UT comes with built in frameworks for
+cunit and cppunit. To extend the behavior of UT to work with a
+different language/unit testing package, a new framework needs to be
+created.
+
+** Defining a New Framework
+   
+   `ut-define-framework' takes 9 keyword parameters used to interact
+   with the unit testing software package, the testing project, and
+   the tests themselves. 
+
+** Custom Variables
+   Each keyword value sent to the is assigned to a custom variable created during
+   the definition process. As an example a, when defining the
+   framework cunit the following custom variables are created:
+   
+   - ut-cunit-build-process-hook
+   - ut-cunit-build-filter-hook
+   - ut-cunit-run-filter-hook
+   - ut-cunit-debug-hook
+   - ut-cunit-find-source-hook
+   - ut-cunit-new-project-hook
+   - ut-cunit-new-test-suite-hook
+   - ut-cunit-new-test-hook
+
+* Structures
+** ut-conf
     Ut conf is a hash table of values defining the various defined
     tests. The struture of which is:
     
@@ -39,3 +71,5 @@ Each test is a hash table with the following keys:
 | :file-name   | string/file/nil | File where the most recent error occured |
 | :line-number | integer         | Line where the most recent error occured |
 | :condition   | string          | Reason for test failure                  |
+* Notes
+Currently working on testing the ut-framework stuff.
