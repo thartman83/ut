@@ -13,9 +13,25 @@ created.
 
 ** Defining a New Framework
    
-   `ut-define-framework' takes 9 keyword parameters used to interact
-   with the unit testing software package, the testing project, and
-   the tests themselves. 
+   `ut-define-framework' accepts 2 required and 7 optional keyword parameters
+   used to define how ut interacts with the specific testing
+   framework, the testing project, and the tests themselves.
+   the tests themselves. Below the list of keyword parameters
+   accepted:
+
+** Keywords
+*** :run-process-fn (test-suite conf buffer)
+    Create and return a process of the running test-suite. The process
+    should use BUFFER as 
+*** :run-filter-fn (test-suite run-exit-status run-output)
+    
+*** :build-process-fn    
+*** :build-filter-fn
+*** :debug-fn
+*** :new-project-fn
+*** :new-test-suite-fn
+*** :new-test-fn
+*** :find-source-fn
 
 ** Custom Variables
    Each keyword value sent to the is assigned to a custom variable created during
@@ -24,6 +40,7 @@ created.
    
    - ut-cunit-build-process-hook
    - ut-cunit-build-filter-hook
+   - ut-cunit-
    - ut-cunit-run-filter-hook
    - ut-cunit-debug-hook
    - ut-cunit-find-source-hook

@@ -60,7 +60,7 @@ RUN-OUTPUT holds the output of the `mock' run process."
 
 (ut-define-framework mock
   :build-process-fn #'ut-mock--build-process
-  :build-filter #'ut-mock--build-filter
+  :build-filter-fn #'ut-mock--build-filter
   :run-process-fn #'ut-mock--run-process
   :run-filter-fn #'ut-mock--run-filter)
 

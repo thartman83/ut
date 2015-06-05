@@ -24,6 +24,7 @@
 
 ; Main UT includes
 (require 'ut)
+(require 'ut-util)
 (require 'ut-common-framework)
 (require 'ut-cppunit-framework)
 (require 'ut-cunit-framework)

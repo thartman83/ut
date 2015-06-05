@@ -195,6 +195,17 @@
 (defvar ut--pkg-root (f-dirname (or load-file-name (buffer-file-name)))
   "Base directory of the ut package.")
 
+(defvar *ut-framework-properties* '(:build-process-fn
+                                    :build-filter-fn
+                                    :run-process-fn
+                                    :run-filter-fn
+                                    :debug-fn
+                                    :new-project-fn
+                                    :new-test-suite-fn
+                                    :new-test-fn
+                                    :find-source-fn)
+  "Valid properties that can be passed to a ut-framework definition.")
+
 (defcustom ut-m4-dir (f-join ut--pkg-root "m4")
   "Path to the root of the m4 files for frameworks."
   :group 'ut
@@ -394,7 +405,7 @@ Fields:
 
 (defun ut-test-suite-build-filter-hook (test-suite)
   "Return the build-filter associated with TEST-SUITE."
-  (ht-get test-suite :build-filter))
+  (ht-get test-suite :build-filter-fn))
 
 (defun ut-test-suite-build-details (test-suite)
   "Return the build-details associated with TEST-SUITE."
@@ -421,7 +432,7 @@ Default is true."
 
 (defun ut-test-suite-run-filter-hook (test-suite)
   "Return the run-filter associated with TEST-SUITE."
-  (ht-get test-suite :run-filter 'not-run))
+  (ht-get test-suite :run-filter-fn 'not-run))
 
 (defun ut-test-suite-run-details (test-suite)
   "Return the run details associated with TEST-SUITE."
@@ -503,7 +514,7 @@ If all tests pass within TEST-SUITE, the summary result is 'passed."
         ((not (f-exists? (f-join (ut-project-dir conf) (ut-test-dir conf)
                                  (ut-test-suite-test-dir test-suite)))) nil)
         ((not (memq (ut-test-suite-framework test-suite) ut-frameworks)) nil)
-        ((not (functionp (ut-test-suite-run-process-fn test-suite))) nil)
+        ((not (functionp (ut-test-suite-run-process-hook test-suite))) nil)
         (t t)))
 
 ;; mutators
@@ -527,14 +538,14 @@ RUN-PROCESS-FN and RUN-FILTER, though they may be overriden."
                        (:test-dir (f-relative test-dir (ut-test-dir conf)))
                        (:framework framework))))
     (ht-set new-suite :build-process-fn (ut-framework-build-process-hook framework))
-    (ht-set new-suite :build-filter
+    (ht-set new-suite :build-filter-fn
             (if (null build-filter)
-                (ut-framework-build-filter framework)
+                (ut-framework-build-filter-hook framework)
               build-filter))
     (ht-set new-suite :run-process-fn (ut-framework-run-process-hook framework))
-    (ht-set new-suite :run-filter
+    (ht-set new-suite :run-filtero-fn
             (if (null run-filter)
-                (ut-framework-run-filter framework)
+                (ut-framework-run-filter-hook framework)
               run-filter))
     (when (not (null (ut-framework-new-test-suite-hook framework)))
       (funcall (ut-framework-new-test-suite-hook framework) new-suite conf))
@@ -637,88 +648,78 @@ NOTE: This macro is modeled somewhat after flycheck-define-checker over at
 https//github.com/flycheck/"
   (declare (indent 1)
            (doc-string 2))
-  (let ((build-process-fn (plist-get properties :build-process-fn))
-        (build-filter-fn (plist-get properties :build-filter-fn))
-        (run-process-fn (plist-get properties :run-process-fn))
-        (run-filter-fn (plist-get properties :run-filter-fn))
-        (debug-fn (plist-get properties :debug-fn))
-        (find-source-fn (plist-get properties :find-source-fn))
-        (new-project-fn (plist-get properties :new-project-fn))
-        (new-test-suite-fn (plist-get properties :new-test-suite-fn))
-        (new-test-fn (plist-get properties :new-test-fn)))
-    (unless (or (null build-process-fn) (functionp (eval build-process-fn)))
-      (error "Build process function must either be nil or a function"))
-    (unless (or (null build-filter-fn) (functionp (eval build-filter-fn)))
-      (error "Build filter must either be nil or a function"))
-    (unless (functionp (eval run-process-fn))
-      (error "Run process function must be a function"))
-    (unless (functionp (eval run-filter-fn))
-      (error "Run filter must be a function"))
-    (unless (or (null debug-fn) (functionp (eval debug-fn)))
-      (error "Debug hook must be a function or nil"))
-    (unless (or (null find-source-fn) (functionp (eval find-source-fn)))
-      (error "Find source hook must be a function or nil"))
-    (unless (or (null new-test-suite-fn)
-                (functionp (eval new-test-suite-fn)))
-      (error "New test suite hook must either be nil or a function"))
-    (unless (or (null new-project-fn)
-                (functionp (eval new-project-fn)))
-      (error "New project hook must either be nil or a function"))
-    `(progn
+  ;; (mapc #'(lambda (prop) (unless (member prop *ut-framework-properties*)
+  ;;                          (error "Unknown property `%s'" prop)))
+  ;;       (plist-keys properties))
+  `(let-plist ,properties
+     (unless (or (null build-process-fn) (functionp build-process-fn))
+       (error "Build process function must either be nil or a function"))
+     (unless (or (null build-filter-fn) (functionp build-filter-fn))
+       (error "Build filter must either be nil or a function"))
+     (unless (functionp run-process-fn)
+       (error "Run process function must be a function"))
+     (unless (functionp run-filter-fn)
+       (error "Run filter must be a function"))
+     (unless (or (not (boundp 'debug-fn)) (functionp debug-fn))
+       (error "Debug hook must be a function or nil"))
+     (unless (or (not (boundp 'find-source-fn)) (functionp find-source-fn))
+       (error "Find source hook must be a function or nil"))
+     (unless (or (not (boundp 'new-test-suite-fn)) (functionp new-test-suite-fn))
+       (error "New test suite hook must either be nil or a function"))
+     (unless (or (not (boundp 'new-project-fn)) (functionp new-project-fn))
+       (error "New project hook must either be nil or a function"))
+     (progn
        (ut-undef-framework ',framework)
-       (defcustom ,(intern (format "ut-%s-build-process-hook"
-                                   (symbol-name framework)))
-         ,build-process-fn
+       (defcustom ,(intern (format "ut-%s-build-process-hook" (symbol-name framework)))
+         (if (boundp 'build-process-fn) build-process-fn nil)
          "Hook to run when building a test-suite"
          :type 'hook
          :group 'ut
          :risky t)
        (defcustom ,(intern (format "ut-%s-build-filter-hook" (symbol-name framework)))
-         ,build-filter-fn
+         (if (boundp 'build-filter-fn) build-filter-fn nil)
          "Hook to run when build process has been completed"
          :type 'hook
          :group 'ut
          :risky t)
        (defcustom ,(intern (format "ut-%s-run-process-hook" (symbol-name framework)))
-         ,run-process-fn
+         run-process-fn
          "Hook to run when runing a test-suite"
          :type 'hook
          :group 'ut
          :risky t)
        (defcustom ,(intern (format "ut-%s-run-filter-hook" (symbol-name framework)))
-         ,run-filter-fn
+         run-filter-fn
          "Hook to run when the run process has been completed"
          :type 'hook
          :group 'ut
          :risky t)
        (defcustom ,(intern (format "ut-%s-debug-hook" (symbol-name framework)))
-         ,debug-fn
+         (if (boundp 'debug-fn) debug-fn nil)
          "Hook to run to debug test-suite"
          :type 'hook
          :group 'ut
          :risky t)
        (defcustom ,(intern (format "ut-%s-find-source-hook" (symbol-name framework)))
-         ,find-source-fn
+         (if (boundp 'find-source-fn) find-source-fn nil)
          "Hook to run to find the source file associated with a test sute"
          :type 'hook
          :group 'ut
          :risky t)
        (defcustom ,(intern (format "ut-%s-new-project-hook" (symbol-name framework)))
-         ,new-project-fn
+         (if (boundp 'new-project-fn) new-project-fn nil)
          "Hook to run when tests are initially setup for a project"
          :type 'hook
          :group 'ut
          :risky t)
-
-       (defcustom ,(intern (format "ut-%s-new-test-suite-hook"
-                                   (symbol-name framework)))
-         ,new-test-suite-fn
+       (defcustom ,(intern (format "ut-%s-new-test-suite-hook" (symbol-name framework)))
+         (if (boundp 'new-test-suite-fn) new-test-suite-fn nil)
          "Hook to run when creating a new test suite"
          :type 'hook
          :group 'ut
          :risky t)
        (defcustom ,(intern (format "ut-%s-new-test-hook" (symbol-name framework)))
-         ,new-test-fn
+         (if (boundp 'new-test-fn) new-test-fn nil)
          "Hook to run when creating a new test"
          :type 'hook
          :group 'ut
@@ -737,8 +738,9 @@ https//github.com/flycheck/"
       (makunbound (intern (format "ut-%s-debug-hook" framework-str)))
       (makunbound (intern (format "ut-%s-find-source-hook" framework-str)))
       (makunbound (intern (format "ut-%s-run-filter-hook" framework-str)))
-      (makunbound (intern (format "ut-%s-new-test-suite-hook" framework-str)))
       (makunbound (intern (format "ut-%s-new-project-hook" framework-str)))
+      (makunbound (intern (format "ut-%s-new-test-suite-hook" framework-str)))
+      (makunbound (intern (format "ut-%s-new-test-hook" framework-str)))
       (setf ut-frameworks (remove framework ut-frameworks)))))
 
 (defun ut-framework-build-process-hook (framework)
@@ -797,12 +799,7 @@ https//github.com/flycheck/"
 
 (defun ut-frameworkp (framework)
   "Check if FRAMEWORK exists and is defined."
-  (condition-case nil
-      (and (functionp (ut-framework-build-process-hook framework))
-           (functionp (ut-framework-build-filter framework))
-           (functionp (ut-framework-run-process-hook framework))
-           (functionp (ut-framework-run-filter framework)))
-    (error nil)))
+  (member framework ut-frameworks))
 
 ;; Result Functions
 
@@ -998,6 +995,8 @@ Display all test information if nil."
     (let* ((exec-path (cons (ut-test-dir conf) exec-path))
            (process (funcall (ut-test-suite-build-process-hook test-suite)
                              test-suite conf buffer)))
+      (when (not (processp process))
+        (error "Internal Error: build process hook return a non-process object"))
       (process-put process :finished nil)
       (process-put process :buffer buffer)
       (process-put process :test-suite test-suite)

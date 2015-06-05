@@ -58,6 +58,7 @@
    (make-directory (f-join (ut-test-dir conf) (ut-test-suite-test-dir test-suite)))))
 
 (ert-deftest test-ut-new-framework ()
+  "Tests for the `ut-new-framework' macro."
   (let ((ut-framework nil))
     (ut-define-framework echo
       :build-process-fn #'ut-echo--build-process
@@ -70,8 +71,7 @@
     (should (functionp (ut-framework-build-filter-hook 'echo)))
     (should (functionp (ut-framework-run-process-hook 'echo)))
     (should (functionp (ut-framework-run-filter-hook 'echo)))
-    (should (and (ut-framework-new-test-suite-hook 'echo)
-                 (functionp (ut-framework-new-test-suite-hook 'echo))))
+    (should (functionp (ut-framework-new-test-suite-hook 'echo)))
     (with-temp-buffer
       (with-temporary-dir
        (make-directory "tests")
@@ -87,6 +87,7 @@
          (should (eq (ut-test-suite-run-status suite) 'passed)))))))
 
 (ert-deftest test-ut-undef-framework ()
+  "Tests for the `ut-undef-framework' function"
   (let ((ut-frameworks nil))
     (ut-define-framework echo
       :build-process-fn #'ut-echo--build-process
