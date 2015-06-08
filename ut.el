@@ -651,75 +651,85 @@ https//github.com/flycheck/"
   ;; (mapc #'(lambda (prop) (unless (member prop *ut-framework-properties*)
   ;;                          (error "Unknown property `%s'" prop)))
   ;;       (plist-keys properties))
-  `(let-plist ,properties
-     (unless (or (null build-process-fn) (functionp build-process-fn))
-       (error "Build process function must either be nil or a function"))
-     (unless (or (null build-filter-fn) (functionp build-filter-fn))
-       (error "Build filter must either be nil or a function"))
-     (unless (functionp run-process-fn)
-       (error "Run process function must be a function"))
-     (unless (functionp run-filter-fn)
-       (error "Run filter must be a function"))
-     (unless (or (not (boundp 'debug-fn)) (functionp debug-fn))
-       (error "Debug hook must be a function or nil"))
-     (unless (or (not (boundp 'find-source-fn)) (functionp find-source-fn))
-       (error "Find source hook must be a function or nil"))
-     (unless (or (not (boundp 'new-test-suite-fn)) (functionp new-test-suite-fn))
-       (error "New test suite hook must either be nil or a function"))
-     (unless (or (not (boundp 'new-project-fn)) (functionp new-project-fn))
-       (error "New project hook must either be nil or a function"))
-     (progn
+  (let ((run-process-fn (plist-get properties :run-process-fn))
+        (run-filter-fn (plist-get properties :run-filter-fn))
+        (build-process-fn (plist-get properties :build-process-fn))
+        (build-filter-fn (plist-get properties :build-filter-fn))
+        (debug-fn (plist-get properties :debug-fn))
+        (find-source-fn (plist-get properties :find-source-fn))
+        (new-project-fn (plist-get properties :new-project-fn))
+        (new-test-suite-fn (plist-get properties :new-test-suite-fn))
+        (new-test-fn (plist-get properties :new-test-fn)))
+    (unless (functionp (eval run-process-fn))
+      (error "Run process function must be a function"))
+    (unless (functionp (eval run-filter-fn))
+      (error "Run filter must be a function"))
+    (unless (unbound-nil-fn-p (eval build-process-fn))
+      (error "Build process function must either be nil or a function"))
+    (unless (unbound-nil-fn-p (eval build-filter-fn))
+      (error "Build filter must either be nil or a function"))
+    (unless (unbound-nil-fn-p (eval debug-fn))
+      (error "Debug hook must be a function or nil"))
+    (unless (unbound-nil-fn-p (eval find-source-fn))
+      (error "Find source hook must be a function or nil"))
+    (unless (unbound-nil-fn-p (eval new-project-fn))
+      (error "New project hook must either be nil or a function"))
+    (unless (unbound-nil-fn-p (eval new-test-suite-fn))
+      (error "New test suite hook must either be nil or a function"))
+    (unless (unbound-nil-fn-p (eval new-test-fn))
+      (error "New test hook must either be nil or a function"))
+    `(progn
        (ut-undef-framework ',framework)
        (defcustom ,(intern (format "ut-%s-build-process-hook" (symbol-name framework)))
-         (if (boundp 'build-process-fn) build-process-fn nil)
+         ,build-process-fn
          "Hook to run when building a test-suite"
          :type 'hook
          :group 'ut
          :risky t)
        (defcustom ,(intern (format "ut-%s-build-filter-hook" (symbol-name framework)))
-         (if (boundp 'build-filter-fn) build-filter-fn nil)
+         ,build-filter-fn
          "Hook to run when build process has been completed"
          :type 'hook
          :group 'ut
          :risky t)
        (defcustom ,(intern (format "ut-%s-run-process-hook" (symbol-name framework)))
-         run-process-fn
+         ,run-process-fn
          "Hook to run when runing a test-suite"
          :type 'hook
          :group 'ut
          :risky t)
        (defcustom ,(intern (format "ut-%s-run-filter-hook" (symbol-name framework)))
-         run-filter-fn
+         ,run-filter-fn
          "Hook to run when the run process has been completed"
          :type 'hook
          :group 'ut
          :risky t)
        (defcustom ,(intern (format "ut-%s-debug-hook" (symbol-name framework)))
-         (if (boundp 'debug-fn) debug-fn nil)
+         ,debug-fn
          "Hook to run to debug test-suite"
          :type 'hook
          :group 'ut
          :risky t)
        (defcustom ,(intern (format "ut-%s-find-source-hook" (symbol-name framework)))
-         (if (boundp 'find-source-fn) find-source-fn nil)
+         ,find-source-fn
          "Hook to run to find the source file associated with a test sute"
          :type 'hook
          :group 'ut
          :risky t)
        (defcustom ,(intern (format "ut-%s-new-project-hook" (symbol-name framework)))
-         (if (boundp 'new-project-fn) new-project-fn nil)
+         ,new-project-fn
          "Hook to run when tests are initially setup for a project"
          :type 'hook
          :group 'ut
          :risky t)
        (defcustom ,(intern (format "ut-%s-new-test-suite-hook" (symbol-name framework)))
-         (if (boundp 'new-test-suite-fn) new-test-suite-fn nil)
+         ,new-test-suite-fn
          "Hook to run when creating a new test suite"
          :type 'hook
          :group 'ut
          :risky t)
        (defcustom ,(intern (format "ut-%s-new-test-hook" (symbol-name framework)))
-         (if (boundp 'new-test-fn) new-test-fn nil)
+         ,new-test-fn
          "Hook to run when creating a new test"
          :type 'hook
          :group 'ut

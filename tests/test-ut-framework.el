@@ -14,8 +14,45 @@
 ;; GNU General Public License for more details.
 
 ;;; Commentary:
-
-;; 
+;;
+;; Testing Functions related to ut-framework definition and intraction
+;;
+;; Macros and Functions to test:
+;; - `ut-define-framework'
+;; -- Test optimal case where all defcustoms are created and have
+;;    functions assigned as values to the hooks
+;; -- Test optimal case where some defcustoms are create and have
+;;    functions assigned as values to the hooks
+;; -- Test failure case where run-process-fn and/or run-filter-fn are
+;;    not assigned.
+;; -- Test failure cases where non-functions are passed as plist
+;;    values for the hook properties
+;; -- Test optimal case where redefining a framework changes the hook
+;;    values
+;; - `ut-undef-framework'
+;; -- Test optimal case where all framework hooks are unbound
+;; -- Test failure case where the framework passed as a parameter is
+;;    not a framework
+;; - `ut-framework-p'
+;; -- Test against both existing frameworks and non-existant frameworks
+;; - `ut-framework-build-process-hook'
+;; -- Test that hooks return values or nil if the hook is non-existant
+;; - `ut-framework-build-filter-hook'
+;; -- Test that hooks return values or nil if the hook is non-existant
+;; - `ut-framework-run-process-hook'
+;; -- Test that hooks return values or nil if the hook is non-existant
+;; - `ut-framework-run-filter-hook'
+;; -- Test that hooks return values or nil if the hook is non-existant
+;; - `ut-framework-debug-hook'
+;; -- Test that hooks return values or nil if the hook is non-existant
+;; - `ut-framework-find-source-hook'
+;; -- Test that hooks return values or nil if the hook is non-existant
+;; - `ut-framework-new-test-suite-hook'
+;; -- Test that hooks return values or nil if the hook is non-existant
+;; - `ut-framework-new-test-hook'
+;; -- Test that hooks return values or nil if the hook is non-existant
+;; - `ut-framework-new-project-hook'
+;; -- Test that hooks return values or nil if the hook is non-existant
 
 ;;; Code:
 
@@ -57,34 +94,28 @@
   (save-current-directory
    (make-directory (f-join (ut-test-dir conf) (ut-test-suite-test-dir test-suite)))))
 
-(ert-deftest test-ut-new-framework ()
+(ert-deftest test-ut-new-framework-optimal-all-fn ()
   "Tests for the `ut-new-framework' macro."
-  (let ((ut-framework nil))
-    (ut-define-framework echo
-      :build-process-fn #'ut-echo--build-process
-      :build-filter-fn #'ut-echo--build-filter
-      :run-process-fn #'ut-echo--run-process
-      :run-filter-fn #'ut-echo--run-filter
-      :new-test-suite-fn #'ut-echo--new-test-suite)
-    (should (ut-frameworkp 'echo))
-    (should (functionp (ut-framework-build-process-hook 'echo)))
-    (should (functionp (ut-framework-build-filter-hook 'echo)))
-    (should (functionp (ut-framework-run-process-hook 'echo)))
-    (should (functionp (ut-framework-run-filter-hook 'echo)))
-    (should (functionp (ut-framework-new-test-suite-hook 'echo)))
-    (with-temp-buffer
-      (with-temporary-dir
-       (make-directory "tests")
-       (let* ((conf (ut-parse-conf (ut-new-conf ".tests" "echo-test" "tests" 'echo)))
-              (suite (ut-new-test-suite conf "echo1" "echo1" 'echo)))
-         (setq-local ut-conf conf)
-         (setq-local major-mode 'ut-mode)
-         (ut-build-test-suite suite conf (current-buffer))
-         (ut-test-wait-for-process "build-echo-echo1")
-         (should (eq (ut-test-suite-build-status suite) 'built))
-         (ut-run-test-suite suite conf (current-buffer))
-         (ut-test-wait-for-process "run-echo-echo1")
-         (should (eq (ut-test-suite-run-status suite) 'passed)))))))
+  (ut-define-mock-framework)
+  (should (ut-frameworkp 'mock))
+  (should (and (boundp (ut-framework-build-process-hook 'mock))
+               (functionp (ut-framework-build-process-hook 'mock))))
+  (should (and (boundp (ut-framework-build-filter-hook 'mock))
+               (functionp (ut-framework-build-filter-hook 'mock))))
+  (should (and (boundp (ut-framework-run-process-hook 'mock))
+               (functionp (ut-framework-run-process-hook 'mock))))
+  (should (and (boundp (ut-framework-run-filter-hook 'mock))
+               (functionp (ut-framework-run-filter-hook 'mock))))
+  (should (and (boundp (ut-framework-debug-hook 'mock))
+               (functionp (ut-framework-debug-hook 'mock))))
+  (should (and (boundp (ut-framework-find-source-hook 'mock))
+               (functionp (ut-framework-find-source-hook 'mock))))
+  (should (and (boundp (ut-framework-new-project-hook 'mock))
+               (functionp (ut-framework-new-project-hook 'mock))))
+  (should (and (boundp (ut-framework-new-test-suite-hook 'mock))
+               (functionp (ut-framework-new-test-suite-hook 'mock))))
+  (should (and (boundp (ut-framework-new-test 'mock))
+               (functionp (ut-framework-new-test 'mock)))))
 
 (ert-deftest test-ut-undef-framework ()
   "Tests for the `ut-undef-framework' function"

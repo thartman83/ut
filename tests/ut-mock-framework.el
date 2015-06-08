@@ -58,11 +58,33 @@ RUN-EXIT-STATUS holds the exit status of the `mock' run process.
 RUN-OUTPUT holds the output of the `mock' run process."
   (read (mapconcat #'identity run-output "\n")))
 
-(ut-define-framework mock
-  :build-process-fn #'ut-mock--build-process
-  :build-filter-fn #'ut-mock--build-filter
-  :run-process-fn #'ut-mock--run-process
-  :run-filter-fn #'ut-mock--run-filter)
+(defun ut-mock--debug (test-suite conf)
+  "Debug TEST-SUITE using CONF.")
+
+(defun ut-mock--find-source (test-suite conf)
+  "Find source file of TEST-SUITE using CONF.")
+
+(defun ut-mock--new-project (conf)
+  "Setup a new testing environment using CONF.")
+
+(defun ut-mock--new-test-suite (test-suite conf)
+  "Setup a new TEST-SUITE using CONF.")
+
+(defun ut-mock-new-test (test test-suite conf)
+  "Setup a new TEST in TEST-SUITE using CONF.")
+
+(defun ut-define-mock-framework ()
+  "Define the mock framework."
+  (ut-define-framework mock
+    :build-process-fn #'ut-mock--build-process
+    :build-filter-fn #'ut-mock--build-filter
+    :run-process-fn #'ut-mock--run-process
+    :run-filter-fn #'ut-mock--run-filter
+    :debug-fn #'ut-mock--debug
+    :find-source-fn #'ut-mock--find-source
+    :new-project-fn #'ut-mock--new-project
+    :new-test-suite-fn #'ut-mock--new-test-suite
+    :new-test-fn #'ut-mock--new-test))
 
 (provide 'ut-mock-framework)
 

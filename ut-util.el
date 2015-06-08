@@ -47,6 +47,10 @@
                       plist)
        ,@body)))
 
+(defun unbound-nil-fn-p (fn)
+  "Return t if FN is either unbound, nil or a function, nil otherwise."
+  (or (not (boundp fn)) (null fn) (functionp fn)))
+
 (provide 'ut-util)
 
 ;;; ut-util.el ends here
