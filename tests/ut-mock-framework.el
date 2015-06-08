@@ -70,7 +70,7 @@ RUN-OUTPUT holds the output of the `mock' run process."
 (defun ut-mock--new-test-suite (test-suite conf)
   "Setup a new TEST-SUITE using CONF.")
 
-(defun ut-mock-new-test (test test-suite conf)
+(defun ut-mock--new-test (test test-suite conf)
   "Setup a new TEST in TEST-SUITE using CONF.")
 
 (defun ut-define-mock-framework ()
