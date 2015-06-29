@@ -155,7 +155,7 @@
 (defvar ut-conf-name ".tests"
   "Name of the configuration file for each project.")
 
-(defvar ut-buffer-name-template "*UT %s*"
+(defvar ut-conf-buffer-name-template "*UT %s*"
   "Template for ut buffers.")
 
 (defvar ut-log-buffer "*UT Log*"
@@ -224,37 +224,39 @@
 
 ;; Accessors
 
-(defun ut-project-name (conf)
+(defun ut-conf-project-name (conf)
   "Return project name associated with CONF."
-  (gethash :project-name conf))
+  (ht-get conf :project-name nil))
 
-(defun ut-project-dir (conf)
+(defun ut-conf-project-dir (conf)
   "Return project dir associated with CONF."
-  (gethash :project-dir conf))
+  (ht-get conf :project-dir nil))
 
-(defun ut-test-dir (conf)
+(defun ut-conf-test-dir (conf)
   "Return test dir associated with CONF."
-  (f-join (gethash :project-dir conf) (gethash :test-dir conf)))
+  (f-join (ht-get conf :project-dir nil)
+          (ht-get conf :test-dir nil)))
 
 (defun ut-test-suites (conf)
   "Return test suites associated with CONF."
-  (gethash :test-suites conf))
+  (ht-get conf :test-suites nil))
 
-(defun ut-project-framework (conf)
+(defun ut-conf-framework (conf)
   "Return the framework associated with CONF."
-  (gethash :framework conf))
+  (ht-get conf :framework nil))
 
-(defun ut-buffer-name (conf)
+(defun ut-conf-buffer-name (conf)
   "Return the name of the buffer associated with CONF."
-  (format ut-buffer-name-template (ut-project-name conf)))
+  (format ut-conf-buffer-name-template (ut-conf-project-name conf)))
 
 ;; predicates
 
 (defun ut-conf-p (conf)
   "Return t if CONF is a valid unit test configuration, nil otherwise."
   (cond ((not (ht? conf)) nil)
-        ((null (ut-project-name conf)) nil)
-        ((null (ut-test-dir conf)) nil)
+        ((null (ut-conf-project-name conf)) nil)
+        ((null (ut-conf-project-dir conf)) nil)
+        ((null (ut-conf-test-dir conf)) nil)
         ((not (ht? (ut-test-suites conf))) nil)
         ((not (-all? #'(lambda (val) (ut-test-suite-p conf val))
                      (ht-values (ut-test-suites conf)))) nil)
@@ -305,64 +307,27 @@
 
 ;; creation and manipulation functions
 
-(defun ut-new-conf (test-conf project-name test-dir framework)
-  "Interactively ask user for the fields to fill TEST-CONF with.
+(defun ut-conf-new (project-name conf-file test-dir framework)
+  "Create a new ut configuration file.
 
-Fields:
-       PROJECT-NAME: name of the project to tests
-       TEST-DIR: root directory for the testing code
-       FRAMEWORK: general testing framework for the project"
-  (interactive
-   (let* ((c (read-file-name "Configuration file: " default-directory
-                             (f-join default-directory ut-conf-name) nil
-                             ut-conf-name))
-          (p (read-string "Project name: "))
-          (d (f-dirname c))
-          (td (read-directory-name "Test directory: "
-                                   (f-join default-directory "tests")))
-          (f (intern (completing-read "Framework: "
-                                      (mapcar #'(lambda (x)
-                                                  (symbol-name x))
-                                              ut-frameworks)))))
-     (when (not (f-directory? d))
-       (if (y-or-no-p (format (concat "Project directory '%s' "
-                                      "does not exist, create?") d))
-           (make-directory d)
-         (error "New ut conf creation aborted")))
-     (when (not (f-relative? td))
-       (if (f-ancestor-of? d td)
-           (setf td (f-relative td d))
-         (error "Test directory '%s' is not an ancestor of '%s'" td d)))
-     (when (not (f-directory? (f-join d td)))
-       (if (y-or-no-p (format (concat "Test directory '%s' does"
-                                      " not exist, create?")
-                              (f-join d td)))
-           (make-directory (f-join d td))
-         (error "New ut conf creation aborted")))
-     (list c p td f)))
-  (let ((project-dir (f-dirname test-conf)))
-    (when (not (file-writable-p test-conf))
-      (error "Could not create new test configuration file `%s'" test-conf))
-    (when (not (f-directory? project-dir))
-      (error "Project directory `%s' does not exist" project-dir))
-    (when (not (f-directory? test-dir))
-      (error "Test directory `%s' does not exist" test-dir))
-    (when (not (f-ancestor-of? project-dir test-dir))
-      (error "Project directory `%s' is not an ancestor of test directory `%s'"
-             project-dir test-dir))
-    (when (not (memq framework ut-frameworks))
-      (error "Framework `%s' does not exist" framework))
-    (let ((conf (ht (:project-name project-name)
-                    (:project-dir project-dir)
-                    (:test-dir test-dir)
-                    (:framework framework)
-                    (:test-suites (ht)))))
-      (ut-write-conf conf test-conf)
-      (when (not (null (ut-framework-new-project-hook framework)))
-        (run-hook-with-args (ut-framework-new-project-hook framework) conf))
-      test-conf)))
+Creates a new unit testing environment for PROJECT-NAME, saving
+the configuration into CONF-FILE.  TEST-DIR is a sub folder from
+the root project director.  FRAMEWORK is the name of the unit
+testing software that will be used to run the test."
+  (let ((conf (ht (:project-name project-name)
+                  (:project-dir (f-dirname conf-file))
+                  (:test-dir test-dir)
+                  (:framework framework)
+                  (:test-suites (ht)))))
+    (when (not (file-writable-p conf-file))
+      (error "Could not create new test configuration file `%s'" conf-file))
+    (ut-conf-verify conf)
+    (ut-conf-write conf conf-file)
+    (when (not (null (ut-framework-new-project-hook framework)))
+      (run-hook-with-args (ut-framework-new-project-hook framework) conf))
+    conf))
 
-(defun ut-parse-conf (test-conf-file)
+(defun ut-conf-parse (test-conf-file)
   "Parse the TEST-CONF-FILE into a plist."
   (let ((new-conf (read (f-read-text test-conf-file 'utf-8))))
     (ht-set! new-conf :project-dir (f-dirname (f-expand test-conf-file)))
@@ -371,11 +336,26 @@ Fields:
              test-conf-file))
     new-conf))
 
-(defun ut-reset-conf (conf)
+(defun ut-conf-verify (conf)
+  "Perform a sanity check on the CONF structure.
+
+This function is not a predicate.  It will signal errors if there is a problem
+with the configuration file."
+  (let* ((project-dir (ut-conf-project-dir conf))
+         (test-dir (f-join project-dir (ut-conf-test-dir conf)))
+         (framework (ut-conf-framework conf)))
+    (when (not (f-directory? (ut-conf-test-dir conf)))
+      (error "Test directory `%s' does not exist" (ut-conf-test-dir conf)))
+    (when (not (memq framework ut-frameworks))
+      (error "Framework `%s' does not exist" framework))
+    (mapc #'(lambda (val) (ut-conf-verify-test-suite conf val))
+          (ht-values (ut-test-suites conf)))))
+
+(defun ut-conf-reset (conf)
   "Reset CONF to blank."
   (ht-clear! conf))
 
-(defun ut-write-conf (conf path)
+(defun ut-conf-write (conf path)
   "Write CONF unit testing configuration to PATH."
   (let ((to-write (ht-copy conf)))
     (ht-remove! to-write :project-dir)
@@ -511,11 +491,17 @@ If all tests pass within TEST-SUITE, the summary result is 'passed."
   "Return t if CONF's TEST-SUITE is a valid test suite."
   (cond ((not (stringp (ut-test-suite-name test-suite))) nil)
         ((not (stringp (ut-test-suite-test-dir test-suite))) nil)
-        ((not (f-exists? (f-join (ut-project-dir conf) (ut-test-dir conf)
+        ((not (f-exists? (f-join (ut-conf-project-dir conf) (ut-conf-test-dir conf)
                                  (ut-test-suite-test-dir test-suite)))) nil)
         ((not (memq (ut-test-suite-framework test-suite) ut-frameworks)) nil)
         ((not (functionp (ut-test-suite-run-process-hook test-suite))) nil)
         (t t)))
+
+(defun ut-conf-verify-test-suite (conf test-suite)
+  "Sanity check for CONF and TEST-SUITE.
+
+This function is not a predicate.  It will signal an error if it encounters
+something wrong.")
 
 ;; mutators
 
@@ -531,11 +517,11 @@ RUN-PROCESS-FN and RUN-FILTER, though they may be overriden."
   (when (not (memq framework ut-frameworks))
     (error "Unknown framework '%s'" framework))
   (when (not (or (f-relative? test-dir)
-                 (f-ancestor-of? (ut-test-dir conf) test-dir)))
+                 (f-ancestor-of? (ut-conf-test-dir conf) test-dir)))
     (error "TEST-DIR must be a relative directory or an absolute path as a
  direct ancestor of the projects test root"))
   (let ((new-suite (ht (:test-name name)
-                       (:test-dir (f-relative test-dir (ut-test-dir conf)))
+                       (:test-dir (f-relative test-dir (ut-conf-test-dir conf)))
                        (:framework framework))))
     (ht-set new-suite :build-process-fn (ut-framework-build-process-hook framework))
     (ht-set new-suite :build-filter-fn
@@ -562,7 +548,7 @@ RUN-PROCESS-FN and RUN-FILTER, though they may be overriden."
 
 (defun ut-new-test (conf test-name test-suite)
   "Based on CONF, add TEST-NAME to TEST-SUITE."
-  (run-hook-with-args (ut-framework-new-test-hook (ut-project-framework conf))
+  (run-hook-with-args (ut-framework-new-test-hook (ut-conf-framework conf))
                       conf test-name test-suite))
 
 ;; test-suite process functions
@@ -615,7 +601,7 @@ RUN-PROCESS-FN and RUN-FILTER, though they may be overriden."
 
 ;; Misc
 
-(defun ut-test-suite-count (conf)
+(defun ut-conf-test-suite-count (conf)
   "Return the number of currently defined test suites in CONF."
   (ht-size (ut-test-suites conf)))
 
@@ -865,7 +851,7 @@ https//github.com/flycheck/"
                  (ut-test-suites conf))
         (insert "\n")
         (ut-draw-summary (ut-test-suites conf))
-        (ut-write-conf conf (f-join (ut-project-dir conf) ut-conf-name))))))
+        (ut-conf-write conf (f-join (ut-conf-project-dir conf) ut-conf-name))))))
 
 (defun ut-draw-buffer-interactive ()
   "Draw the complete unit testing buffer based on the local buffer variable ut-conf."
@@ -876,7 +862,7 @@ https//github.com/flycheck/"
 
 (defun ut-draw-header (conf)
   "Draw the ut buffer header based on CONF at point."
-  (let ((title (concat " Unit Tests for " (ut-project-name conf) " ")))
+  (let ((title (concat " Unit Tests for " (ut-conf-project-name conf) " ")))
     (insert (propertize title 'face 'ut-header-label))
     (insert "\n")))
 
@@ -935,15 +921,19 @@ Display all test information if nil."
   "Draw TEST to current buffer at point."
   (when (ut-test-resultp test)
     (insert (format "%s: %s\n" (first test) (second test)))
-    (mapc #'(lambda (test-info) (insert (format "%s: %s\n" (first test-info) (second test-info))))
+    (mapc #'(lambda (test-info) (insert (format "%s: %s\n" (first test-info)
+                                                (second test-info))))
           (third test))))
 
 (defun ut-draw-summary (test-suites)
   "Draw the summarized result of the list of TEST-SUITES."
   (let* ((suites (ht-map #'(lambda (key val) val) test-suites))
-         (passed (-count #'(lambda (suite) (eq (ut-test-suite-run-status suite) 'success)) suites))
-         (failed (-count #'(lambda (suite) (eq (ut-test-suite-run-status suite) 'failure)) suites))
-         (errored (-count #'(lambda (suite) (eq (ut-test-suite-run-status suite) 'error)) suites)))
+         (passed (-count #'(lambda (suite) (eq (ut-test-suite-run-status suite)
+                                               'success)) suites))
+         (failed (-count #'(lambda (suite) (eq (ut-test-suite-run-status suite)
+                                               'failure)) suites))
+         (errored (-count #'(lambda (suite) (eq (ut-test-suite-run-status suite)
+                                                'error)) suites)))
     (insert (format "Total Passed: %d Total Failed: %d Total Errors: %d\n"
                     passed failed errored))))
 
@@ -953,16 +943,16 @@ Display all test information if nil."
   "Add to CONF TEST-SUITE as a new test suite to the ut definition."
   (interactive (let* ((c (if (ut-buffer-p) conf nil))
                       (n (read-string "Test suite name: "))
-                      (default-path (f-join (ut-test-dir c) n))
+                      (default-path (f-join (ut-conf-test-dir c) n))
                       (d (read-directory-name "Path to test: " default-path
                                               default-path nil))
                       (f (intern (completing-read
-                                  (format "Framework [%s] : " (ut-project-framework c))
+                                  (format "Framework [%s] : " (ut-conf-framework c))
                                   (mapcar #'symbol-name ut-frameworks)
-                                  nil nil (symbol-name (ut-project-framework c))))))
+                                  nil nil (symbol-name (ut-conf-framework c))))))
                  (when (not (f-directory? d))
                    (if (y-or-n-p (format "Test directory `%s' does not exist create it?" d))
-                       (make-directory (f-join (ut-test-dir c) d))
+                       (make-directory (f-join (ut-conf-test-dir c) d))
                      (error "Aborting")))
                  (list c (ut-new-test-suite c n d f))))
   (ut-draw-buffer (current-buffer)))
@@ -975,15 +965,17 @@ Display all test information if nil."
   "Run TEST-SUITE using CONF in BUFFER."
   (with-current-buffer buffer
     (when (not (ut-test-suite-p conf test-suite))
-        (error "Could not find test suite '%s' to run" (ut-test-suite-name test-suite)))
+      (error "Could not find test suite '%s' to run"
+             (ut-test-suite-name test-suite)))
     (ut-log-message "Running test-suite `%s'\n"
                     (ut-test-suite-name test-suite))
     (ht-set test-suite :run-status 'running)
     (ht-set test-suite :run-details "")
     (ht-set test-suite :run-time "")
     (ut-draw-buffer buffer)
-    (let* ((exec-path (cons (ut-test-dir conf) exec-path))
-           (process (funcall (symbol-value (ut-test-suite-run-process-hook test-suite))
+    (let* ((exec-path (cons (ut-conf-test-dir conf) exec-path))
+           (process (funcall (symbol-value (ut-test-suite-run-process-hook
+                                            test-suite))
                              test-suite conf buffer)))
       (process-put process :finished nil)
       (process-put process :buffer buffer)
@@ -1001,14 +993,16 @@ Display all test information if nil."
   "Run the build-process-hook for TEST-SUITE with CONF in BUFFER."
   (with-current-buffer buffer
     (when (not (ut-test-suite-p conf test-suite))
-        (error "Could not find test suite '%s' to build" (ut-test-suite-name test-suite)))
+      (error "Could not find test suite '%s' to build"
+             (ut-test-suite-name test-suite)))
     (ut-log-message "Building test-suite `%s' \n" (ut-test-suite-name test-suite))
     (ht-set test-suite :build-details "")
     (ht-set test-suite :build-time "")
     (ht-set test-suite :build-status 'building)
     (ut-draw-buffer buffer)
-    (let* ((exec-path (cons (ut-test-dir conf) exec-path))
-           (process (funcall (symbol-value (ut-test-suite-build-process-hook test-suite))
+    (let* ((exec-path (cons (ut-conf-test-dir conf) exec-path))
+           (process (funcall (symbol-value (ut-test-suite-build-process-hook
+                                            test-suite))
                              test-suite conf buffer)))
       (when (not (processp process))
         (error "Internal Error: build process hook return a non-process object"))
@@ -1026,7 +1020,8 @@ Display all test information if nil."
 
 (defun ut-debug-test-suite (test-suite conf)
   "Call debug hook for TEST-SUITE with CONF based on the framework assigned to the test-suite."
-  (run-hook-with-args (ut-framework-debug-hook (ut-test-suite-framework test-suite)) test-suite conf))
+  (run-hook-with-args (ut-framework-debug-hook (ut-test-suite-framework test-suite))
+                      test-suite conf))
 
 (defun ut-find-test-suite-source (test-suite conf)
   "Find and open the source file associated with TEST-SUITE and CONF."
@@ -1043,9 +1038,11 @@ Display all test information if nil."
       (when (null test-suite)
         (error "No test suite at point"))
       (when (ut-point-in-test-suite-build? test-suite)
-        (ht-set! test-suite :summarize-build (not (ut-test-suite-summarize-build test-suite))))
+        (ht-set! test-suite :summarize-build
+                 (not (ut-test-suite-summarize-build test-suite))))
       (when (ut-point-in-test-suite-run? test-suite)
-        (ht-set! test-suite :summarize-run (not (ut-test-suite-summarize-run test-suite))))
+        (ht-set! test-suite :summarize-run
+                 (not (ut-test-suite-summarize-run test-suite))))
       (ut-draw-buffer-interactive))))
 
 (defun ut-quit ()
@@ -1066,8 +1063,10 @@ Display all test information if nil."
   (ut-calculate-test-suite-regions (buffer-local-value 'ut-conf (current-buffer)))
   (let ((retval nil))
     (maphash #'(lambda (name test-suite)
-                 (when (and (>= (line-number-at-pos) (ut-test-suite-start-line test-suite))
-                          (<= (line-number-at-pos) (ut-test-suite-end-line test-suite)))
+                 (when (and (>= (line-number-at-pos)
+                                (ut-test-suite-start-line test-suite))
+                            (<= (line-number-at-pos)
+                                (ut-test-suite-end-line test-suite)))
                    (setf retval test-suite)))
              (ut-test-suites (buffer-local-value 'ut-conf (current-buffer))))
     retval))
@@ -1111,12 +1110,50 @@ Display all test information if nil."
                  (incf current-line 2))
              (ut-test-suites conf))))
 
+;; Interactive Functions
+
+(defun ut-new-conf-interactive (project-name conf-file test-dir framework)
+  "Collect parameters to setup a new testing environment for PROJECT-NAME.
+
+This includes the location where the CONF-FILE file will be save, the TEST-DIR
+and the FRAMEWORK associated with the project."
+  (interactive
+   (let* ((c (read-file-name "Configuration file: " default-directory
+                             (f-join default-directory ut-conf-name) nil
+                             ut-conf-name))
+          (p (read-string "Project name: "))
+          (d (f-dirname c))
+          (td (read-directory-name "Test directory: "
+                                   (f-join default-directory "tests")))
+          (f (intern (completing-read "Framework: "
+                                      (mapcar #'(lambda (x)
+                                                  (symbol-name x))
+                                              ut-frameworks)))))
+     (when (not (f-directory? d))
+       (if (y-or-no-p (format (concat "Project directory '%s' "
+                                      "does not exist, create?") d))
+           (make-directory d)
+         (error "New ut conf creation aborted")))
+     (when (not (f-relative? td))
+       (if (f-ancestor-of? d td)
+           (setf td (f-relative td d))
+         (error "Test directory '%s' is not an ancestor of '%s'" td d)))
+     (when (not (f-directory? (f-join d td)))
+       (if (y-or-no-p (format (concat "Test directory '%s' does"
+                                      " not exist, create?")
+                              (f-join d td)))
+           (make-directory (f-join d td))
+         (error "New ut conf creation aborted")))
+     (list c p td f)))
+  (ut-conf-new project-name conf-file test-dir framework))
+
 (defun ut-new-test-interactive (test-name test-suite)
   "Add a TEST-NAME to the current TEST-SUITE."
   (interactive (let* ((ts (ut-get-test-suite-at-point))
                       (tn (if (null ts)
                               (error "No test suite at point")
-                            (read-string (format "Test to add to %s test suite: " (ut-test-suite-name ts))
+                            (read-string (format "Test to add to %s test suite: "
+                                                 (ut-test-suite-name ts))
                                          "test_"))))
                  (list tn ts)))
   (when (not (ut-buffer-p))
@@ -1131,7 +1168,8 @@ Display all test information if nil."
   (let ((test-suite (ut-get-test-suite-at-point)))
     (when (null test-suite)
       (error "No test suite at point"))
-    (ut-build-test-suite test-suite (buffer-local-value 'ut-conf (current-buffer)) (current-buffer))))
+    (ut-build-test-suite test-suite (buffer-local-value 'ut-conf (current-buffer))
+                         (current-buffer))))
 
 (defun ut-build-all-interactive ()
   "Interactive version of ut-build-all."
@@ -1148,7 +1186,8 @@ Display all test information if nil."
   (let ((test-suite (ut-get-test-suite-at-point)))
     (when (null test-suite)
       (error "No test suite at point"))
-    (ut-run-test-suite test-suite (buffer-local-value 'ut-conf (current-buffer)) (current-buffer))))
+    (ut-run-test-suite test-suite (buffer-local-value 'ut-conf (current-buffer))
+                       (current-buffer))))
 
 (defun ut-run-all-interactive ()
   "Interactive version of ut-run-all."
@@ -1177,31 +1216,80 @@ Display all test information if nil."
 
 ;; Main entry function and mode defuns
 
-(defun ut ()
-    "Start up unit testing.
+;; (defun ut (conf)
+;;   "Start up unit testing based on the environment described in CONF."
+;;   (interactive
+;;    (let ((c (f-join (f-traverse-upwards #'(lambda (path)
+;;                                             (f-exists? (f-join path ut-conf-name))))
+;;                     ut-conf-name)))
+;;      (list (if (not (f-exists? c))
+;;                (progn
+;;                  (call-interactively #'ut-new-conf-interactive))
+;;              (ut-conf-parse c)))))
+;;   (with-current-buffer (get-buffer-create ut-log-buffer)
+;;     (read-only-mode))
+;;   (with-current-buffer (get-buffer-create (ut-conf-buffer-name conf))
+;;     (ut-mode)
+;;     (setq-local ut-conf conf)
+;;     (when (not (f-directory? (ut-conf-test-dir conf)))
+;;       (error "Test directory does not exist"))
+;;     (cd (ut-conf-test-dir conf))
+;;     (read-only-mode)
+;;     (ut-draw-buffer (current-buffer))
+;;     (switch-to-buffer (buffer-name (current-buffer)))))
 
- Reads TEST-CONF configuration file and then creates the testing
- buffer to contain the tests."
-  (interactive)
-  (let* ((ut-conf-dir (f-traverse-upwards #'(lambda (path)
-                                              (f-exists? (f-join path ut-conf-name)))
-                                          default-directory))
-         (conf-file (if (null ut-conf-dir)
-                        (call-interactively #'ut-new-conf)
-                      (f-join ut-conf-dir ut-conf-name)))
-         (def (ut-parse-conf conf-file))
-         (buffer-name (ut-buffer-name def)))
-    (with-current-buffer (get-buffer-create ut-log-buffer)
-      (read-only-mode))
-    (with-current-buffer (get-buffer-create buffer-name)
-      (ut-mode)
-      (setq-local ut-conf def)
-      (when (not (f-directory? (ut-test-dir def)))
-        (error "Test directory does not exist"))
-      (cd (ut-test-dir def))
-      (read-only-mode)
-      (ut-draw-buffer (current-buffer))
-      (switch-to-buffer buffer-name))))
+;; (defun ut (conf-file)
+;;   "Start up unit testing.
+
+;;  Read CONF-FILE configuration file and then creates the testing
+;;  buffer to contain the tests."
+;;   (interactive (list (f-join (f-traverse-upwards
+;;                               #'(lambda (path)
+;;                                   (f-exists? (f-join path ut-conf-name))))
+;;                              ut-conf-name)))
+;;   (let ((conf
+;;          (if (string= ut-conf-name)
+;;              (let* ((c (read-file-name "Configuration file: " default-directory
+;;                                        (f-join default-directory ut-conf-name) nil
+;;                                        ut-conf-name))
+;;                     (p (read-string "Project name: "))
+;;                     (d (f-dirname c))
+;;                     (td (read-directory-name "Test directory: "
+;;                                              (f-join default-directory "tests")))
+;;                     (f (intern (completing-read "Framework: "
+;;                                                 (mapcar #'(lambda (x)
+;;                                                             (symbol-name x))
+;;                                                         ut-frameworks)))))
+;;                (when (not (f-directory? d))
+;;                  (if (y-or-no-p (format (concat "Project directory '%s' "
+;;                                                 "does not exist, create?") d))
+;;                      (make-directory d)
+;;                    (error "New ut conf creation aborted")))
+;;                (when (not (f-relative? td))
+;;                  (if (f-ancestor-of? d td)
+;;                      (setf td (f-relative td d))
+;;                    (error "Test directory '%s' is not an ancestor of '%s'" td d)))
+;;                (when (not (f-directory? (f-join d td)))
+;;                  (if (y-or-no-p (format (concat "Test directory '%s' does"
+;;                                                 " not exist, create?")
+;;                                         (f-join d td)))
+;;                      (make-directory (f-join d td))
+;;                    (error "New ut conf creation aborted")))
+;;                (list c p td f)))))))
+
+;; (ut-new-conf (f-join (read-directory-name "Please select project root: "
+;;                                           default-directory
+;;                                           default-directory)
+;;                      ut-conf-name)
+;;              (read-string "Project name: "
+;;                           (f-filename default-directory))
+;;              (read-string "Test directory: ")
+;;              (intern (completing-read "Framework: "
+;;                                       (mapcar #'(lambda (x)
+;;                                                   (symbol-name x))
+;;                                               ut-frameworks))))
+;; (ut-conf-parse (f-join d ut-conf-name))
+;; )
 
 (defun ut-buffer-p ()
   "Return t if the current buffer is in a ut-mode buffer."

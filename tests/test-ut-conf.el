@@ -14,55 +14,129 @@
 ;; GNU General Public License for more details.
 
 ;;; Commentary:
-
 ;;
+;;  Testing functions related to ut-conf
+;;
+;; Functions to test:
+;; - `ut-conf-p'
+;; -- Test true cases, multiple valid ut-conf structures
+;; -- Test invalid cases, one for each conditional in ut-conf-p
+;; - `ut-conf-new'
+;; -- Test optimal case
+;; - `ut-conf-verify'
+;; -- Test all failure states
+;; - `ut-conf-parse'
+;; -- Test that the project-dir is properly expanded to the
+;;    directory where the conf file lives
+;; - `ut-conf-test-dir'
+;; -- Check that the returned value is absolute
+;; - `ut-conf-write'
+;; -- Test that ut-project is not written
 
 ;;; Code:
 
-;(require 'test-helpers (f-join (f-parent (f-this-file)) "test-helpers"))
 (require 'test-helpers)
 
-(push 'echo ut-frameworks)
+;; ut-conf-p tests
 
-(ert-deftest test-ut-new-conf ()
-  (let ((bad-path "/path/to/no/where/.tests"))
-    (should-error (ut-new-conf bad-path "foo" default-directory
-                               'echo)
-                  (format "Could not create new test configuration file `%s'"
-                          bad-path))
-    (should (not (f-exists? bad-path))))
+(ert-deftest test-ut-conf-p-optimal ()
+  "Test various valid ut-conf-p structures for t return value."
+  (ut-define-mock-framework)
   (with-temporary-dir
-   (make-directory "tests")
-   (let ((conf (ut-parse-conf (ut-new-conf ".tests" "foo"
-                                           (f-join default-directory "tests")
-                                           'echo))))
-     (should (string= (ut-project-name conf) "foo"))
-     (should (f-same? (ut-project-dir conf) default-directory))
-     (should (f-same? (ut-test-dir conf) (f-join default-directory "tests")))
-     (should (hash-table-p (ut-test-suites conf)))
-     (should (= (ut-test-suite-count conf) 0))
-     (should (f-exists? ".tests")))))
+   (mkdir "tests")
+   (let ((conf (ut-conf-new "foo" ut-conf-name "tests" 'mock)))
+     (should (ut-conf-p conf))))
+  (ut-undef-framework 'mock))
 
-(ert-deftest test-ut-parse-conf ()
-  (let ((conf (ut-parse-conf "data/example-tests")))
-    (should (string= (ut-project-name conf) "Example"))
-    (should (f-same? (ut-project-dir conf) "~/projects/ut"))
-    (should (f-same? (ut-test-dir conf) "~/projects/ut/tests/"))
-    (should (eq (ut-project-framework conf) 'echo))
-    (should (= (ut-test-suite-count conf) 0))))
+(ert-deftest test-ut-conf-p-failure ()
+  "Test various failure states for ut-conf-p"
+  (should (null (ut-conf-p nil)))
+  (should (null (ut-conf-p 1)))
+  (should (null (ut-conf-p "foo")))
+  (should (null (ut-conf-p (ht))))
+  (should (null (ut-conf-p (ht (:project-name "foo")))))
+  (should (null (ut-conf-p (ht (:project-name "foo") (:test-dir "tests")))))
+  (should (null (ut-conf-p (ht (:project-name "foo") (:test-dir "tests")
+                               (:test-suites "foo")))))
+  (should (null (ut-conf-p (ht (:project-name "foo") (:test-dir "tests")
+                               (:test-suite (ht (:foo "foo"))))))))
 
-(ert-deftest test-ut-write-conf ()
+;; ut-new-conf tests
+(ert-deftest test-ut-conf-new-optimal ()
+  (ut-define-mock-framework)
   (with-temporary-dir
-   (let ((conf (make-hash-table)))
-     (f-mkdir "tests")
-     (puthash :project-name "TestProject" conf)
-     (puthash :test-dir (f-expand "./tests") conf)
-     (puthash :test-suites (ht) conf)
-     (ut-write-conf conf (f-expand ".tests")))
-   (let ((new-conf (ut-parse-conf (f-expand ".tests"))))
-     (should (string= (ut-project-name new-conf) "TestProject"))
-     (should (f-same? (ut-project-dir new-conf ) "./"))
-     (should (f-same? (ut-test-dir new-conf) "./tests")))))
+   (mkdir "tests")
+   (let ((c (ut-conf-new "foo" (f-join default-directory ut-conf-name)
+                         (f-join default-directory "tests") 'mock)))
+     (should (f-exists? (f-join default-directory ut-conf-name)))))
+  (ut-undef-framework 'mock))
+
+;; ut-conf-verify
+(ert-deftest test-ut-conf-verify-failure-framework-dne ()
+  "Test error when called using a non-existant framework"
+  (with-temporary-dir
+   (mkdir "tests")
+   (let ((c (ht (:project-name "foo")
+                (:project-dir default-directory)
+                (:test-dir "tests")
+                (:framework 'foo)
+                (:test-suites (ht)))))
+     (should-error (ut-conf-verify c) "Framework `foo' does not exist"))))
+
+(ert-deftest test-ut-conf-verify-failure-test-dir-dne ()
+  "Test error when called against a non-existant test directory"
+  (ut-define-mock-framework)
+  (with-temporary-dir
+   (let ((c (ht (:project-name "foo")
+                (:project-dir default-directory)
+                (:test-dir "tests")
+                (:framework 'mock)
+                (:test-suites (ht)))))
+     (should-error (ut-conf-verify c)
+                   (format "Test directory `%s' does not exist" (f-join default-directory "tests")))))
+  (ut-undef-framework 'mock))
+
+(ert-deftest test-ut-conf-parse-project-dir-expansion ()
+  "Test that the :project-dir value is properly set based on conf file location."
+  (ut-define-mock-framework)
+  (with-temporary-dir
+   (mkdir "foo")
+   (mkdir "foo/tests")
+   (let ((conf (ut-conf-new "project" (f-join default-directory "foo" ut-conf-name)
+                            "tests" 'mock)))
+     (mkdir "bar")
+     (mkdir "bar/tests")
+     (ut-conf-write conf (f-join default-directory "bar" ut-conf-name))
+     (setf conf (ut-conf-parse (f-join default-directory "bar" ut-conf-name)))
+     (should (string= (ut-conf-project-dir conf) (f-join default-directory "bar")))
+     (should (string= (ut-conf-test-dir conf) (f-join default-directory "bar/tests")))))
+  (ut-undef-framework 'mock))
+
+(ert-deftest test-ut-conf-test-dir-absolute ()
+  "Test that the path returned by test-dir is an absolute path, even though the stored value
+is relative to the project directory"
+  (ut-define-mock-framework)
+  (with-temporary-dir
+   (mkdir "tests")
+   (let ((conf (ut-conf-new "project" (f-join default-directory ut-conf-name)
+                            "tests" 'mock)))
+     (should (f-absolute? (ut-conf-test-dir conf)))
+     (should (f-relative? (ht-get conf :test-dir)))
+     (should (f-same? (ut-conf-test-dir conf) (f-join (ht-get conf :project-dir)
+                                                      (ht-get conf :test-dir))))))
+  (ut-undef-framework 'mock))
+
+(ert-deftest test-ut-conf-write-no-project-dir-value ()
+  (ut-define-mock-framework)
+  (with-temporary-dir
+   (mkdir "tests")
+   (let ((conf (ut-conf-new "project" (f-join default-directory ut-conf-name)
+                            "tests" 'mock)))
+     ;; Currently ut-conf-new will automatically write out the file. Normally not a fan
+     ;; of testing by side effect but this will be a good canary if and when ut-conf-write gets
+     ;; change in terms of when it is called
+     (should (not (ht-contains? (read (f-read-text (f-join default-directory ut-conf-name) 'utf-8))
+                                :project-dir))))))
 
 (provide 'test-ut-conf)
 
