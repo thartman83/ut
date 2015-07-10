@@ -1,4 +1,4 @@
-;;; ut-load.el --- Load ut
+;;; test-ut-test-suite.el --- Tests for ut-test-suite methods
 
 ;; Copyright (c) 2013 Thomas Hartman (rokstar83@gmail.com)
 
@@ -17,28 +17,4 @@
 
 ;;; Code:
 
-(require 'f)
-
-(add-to-list 'load-path default-directory)
-(add-to-list 'load-path (f-join default-directory "tests"))
-
-; Main UT includes
-(require 'ut)
-(require 'ut-util)
-(require 'ut-common-framework)
-;(require 'ut-cppunit-framework)
-;(require 'ut-cunit-framework)
-
-; UT Testing files
-(require 'test-helpers)
-(require 'test-ut-conf)
-;(require 'test-ut-draw)
-;(require 'test-ut-result)
-(require 'test-ut-test-suite)
-(require 'test-ut-framework)
-;(require 'test-ut-cppunit-framework)
-;(require 'test-ut-common-framework)
-
-
-
-;;; ut-load.el ends here
+(provide ')
