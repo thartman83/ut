@@ -494,7 +494,7 @@ If all tests pass within TEST-SUITE, the summary result is 'passed."
         ((not (f-exists? (f-join (ut-conf-project-dir conf) (ut-conf-test-dir conf)
                                  (ut-test-suite-test-dir test-suite)))) nil)
         ((not (memq (ut-test-suite-framework test-suite) ut-frameworks)) nil)
-        ((not (functionp (ut-test-suite-run-process-hook test-suite))) nil)
+        ((not (functionp (eval (ut-test-suite-run-process-hook test-suite)))) nil)
         (t t)))
 
 (defun ut-conf-verify-test-suite (conf test-suite)
@@ -520,6 +520,8 @@ RUN-PROCESS-FN and RUN-FILTER, though they may be overriden."
                  (f-ancestor-of? (ut-conf-test-dir conf) test-dir)))
     (error "TEST-DIR must be a relative directory or an absolute path as a
  direct ancestor of the projects test root"))
+  (if (not (f-exists? test-dir))
+      (make-directory test-dir))
   (let ((new-suite (ht (:test-name name)
                        (:test-dir (f-relative test-dir (ut-conf-test-dir conf)))
                        (:framework framework))))
@@ -534,7 +536,8 @@ RUN-PROCESS-FN and RUN-FILTER, though they may be overriden."
                 (ut-framework-run-filter-hook framework)
               run-filter))
     (when (not (null (ut-framework-new-test-suite-hook framework)))
-      (run-hook-with-args (ut-framework-new-test-suite-hook framework) new-suite conf))
+      (run-hook-with-args (ut-framework-new-test-suite-hook framework)
+                          new-suite conf))
     (ht-set (ut-test-suites conf) name new-suite)
     new-suite))
 
@@ -615,7 +618,8 @@ RESULT is defined as a list of (string symbol string)")
   (let ((retval str))
     (maphash #'(lambda (key val)
                  (setf str (replace-regexp-in-string
-                            (concat "%" (substring (symbol-name key) 1) "%") val str)))
+                            (concat "%" (substring (symbol-name key) 1) "%")
+                            val str)))
              test-suite)
     str))
 
@@ -637,9 +641,6 @@ NOTE: This macro is modeled somewhat after flycheck-define-checker over at
 https//github.com/flycheck/"
   (declare (indent 1)
            (doc-string 2))
-  ;; (mapc #'(lambda (prop) (unless (member prop *ut-framework-properties*)
-  ;;                          (error "Unknown property `%s'" prop)))
-  ;;       (plist-keys properties))
   (let ((run-process-fn (plist-get properties :run-process-fn))
         (run-filter-fn (plist-get properties :run-filter-fn))
         (build-process-fn (plist-get properties :build-process-fn))
@@ -651,9 +652,11 @@ https//github.com/flycheck/"
         (new-test-fn (plist-get properties :new-test-fn)))
     `(progn
        (unless (functionp ,run-process-fn)
-         (error "`run-process-fn' is required for framework definition and must be a function"))
+         (error (concat "`run-process-fn' is required for framework definition"
+                        " and must be a function")))
        (unless (functionp ,run-filter-fn)
-         (error "`run-filter-fn' is required for framework definition and must be a function"))
+         (error (concat  "`run-filter-fn' is required for framework definition and must"
+                         " be a function")))
        (unless (nil-or-fn-p ,build-process-fn)
          (error "`:build-process-fn' must either be nil or a function"))
        (unless (nil-or-fn-p ,build-filter-fn)
@@ -682,13 +685,15 @@ https//github.com/flycheck/"
          :type 'hook
          :group 'ut
          :risky t)
-       (defcustom ,(intern (format "ut-%s-build-process-hook" (symbol-name framework)))
+       (defcustom ,(intern (format "ut-%s-build-process-hook"
+                                   (symbol-name framework)))
          ,build-process-fn
          "Hook to run when building a test-suite"
          :type 'hook
          :group 'ut
          :risky t)
-       (defcustom ,(intern (format "ut-%s-build-filter-hook" (symbol-name framework)))
+       (defcustom ,(intern (format "ut-%s-build-filter-hook"
+                                   (symbol-name framework)))
          ,build-filter-fn
          "Hook to run when build process has been completed"
          :type 'hook
@@ -712,7 +717,8 @@ https//github.com/flycheck/"
          :type 'hook
          :group 'ut
          :risky t)
-       (defcustom ,(intern (format "ut-%s-new-test-suite-hook" (symbol-name framework)))
+       (defcustom ,(intern (format "ut-%s-new-test-suite-hook"
+                                   (symbol-name framework)))
          ,new-test-suite-fn
          "Hook to run when creating a new test suite"
          :type 'hook
@@ -806,8 +812,10 @@ https//github.com/flycheck/"
 
 ;; Results are in following form:
 ;; (("test-name1" 'passed)
-;;  ("test-name2" 'failed (('file "filename") ('line "line-number") ('message "Failure Message")))
-;;  ("test-name3" 'error (('file "filename") ('line "line-number") ('message "Error Message"))))
+;;  ("test-name2" 'failed (('file "filename") ('line "line-number")
+;;                         ('message "Failure Message")))
+;;  ("test-name3" 'error (('file "filename") ('line "line-number")
+;;                        ('message "Error Message"))))
 
 (defun ut-test-suite-resultp (result)
   "Return t if RESULT is a valid ut-test-suite-result list, nil otherwise."

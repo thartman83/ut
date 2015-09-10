@@ -59,7 +59,10 @@
                       (:ut-email ut-email)))
     (buffer-substring (point-min) (point-max))))
 
-
+(defcustom ut-root-project-dir "~/projects"
+  "Root folder for all projects."
+  :group 'ut
+  :type 'string)
 
 (defun ut-generate-default-makefile.am (dir)
   (interactive "DProject root: ")

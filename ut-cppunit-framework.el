@@ -115,7 +115,7 @@
 
 (defun ut-cppunit-debug-test-suite (test-suite conf)
   "Debug TEST-SUITE using path information from CONF."
-  (let ((path (f-join (ut-project-dir conf) (ut-test-dir conf)
+  (let ((path (f-join (ut-project-dir conf) (ut-conf-test-dir conf)
                       (ut-test-suite-test-dir test-suite) "src/"
                       (format "%sTests" (ut-test-suite-name test-suite)))))
     (gdb (format ut-cppunit-gdb-cmd-opts path))))
@@ -129,7 +129,7 @@
 (defun ut-cppunit-setup-new-test-suite (test-suite conf)
   "Setup a new TEST-SUITE for CONF."
   (let* ((name (ut-test-suite-name test-suite))
-         (dir (f-join (ut-test-dir conf) (ut-test-suite-test-dir test-suite)))
+         (dir (f-join (ut-conf-test-dir conf) (ut-test-suite-test-dir test-suite)))
          (top-makefile.am-text
           (ut-format (ut-format ut-cppunit-default-top-makefile.am test-suite) conf))
          (src-makefile.am-text
@@ -145,7 +145,7 @@
     (ut-cppunit-create-test-suite-subdirs dir)
     ;; create default build/autotools files
     (atu-add-makefile.am-subdir (ut-test-suite-test-dir test-suite)
-                               (f-join (ut-test-dir conf) "Makefile.am"))
+                               (f-join (ut-conf-test-dir conf) "Makefile.am"))
     (atu-add-ac-config-files (f-relative dir (ut-project-dir conf))
                             (f-join (ut-project-dir conf) "configure.ac"))
     (f-write-text top-makefile.am-text 'utf-8 (f-join dir "Makefile.am"))
@@ -170,7 +170,7 @@
 
 (defun ut-cppunit-add-new-test-hdr (conf test-name test-suite)
   "Using CONF, add new TEST-NAME method to TEST-SUITE header file."
-  (let* ((test-src-dir (f-join (ut-test-dir conf) (ut-test-suite-dir test-suite)
+  (let* ((test-src-dir (f-join (ut-conf-test-dir conf) (ut-test-suite-dir test-suite)
                                "src"))
          (hdr-file-name
           (f-join test-src-dir (format "%sTests.hh" (ut-test-suite-name test-suite))))
@@ -197,9 +197,9 @@
 
 (defun ut-cppunit-setup-new-project (conf)
   "Setup a testing folders for a new project defined in CONF."
-  (unless (f-exists? (ut-test-dir conf))
-    (make-directory (ut-test-dir conf)))
-  (f-write-text "SUBDIRS = " 'utf-8 (f-join (ut-test-dir conf) "Makefile.am")))
+  (unless (f-exists? (ut-conf-test-dir conf))
+    (make-directory (ut-conf-test-dir conf)))
+  (f-write-text "SUBDIRS = " 'utf-8 (f-join (ut-conf-test-dir conf) "Makefile.am")))
 
 (defun ut-cppunit-cpp-header (file-name test-name project-name)
   "Combine the copyright and license to form MEGA HEADER!.
@@ -229,10 +229,10 @@ FILE-NAME, TEST-NAME and PROJECT-NAME are passed to copyright."
   "Using CONF, add TEST-NAME to TEST-SUITE."
   (error "Not implemented"))
 
-(defun ut-cunit-find-test-suite-source (suite conf)
+(defun ut-cppunit-find-test-suite-source (suite conf)
   "Find the source file assocaite with SUITE and CONF."
   (f-join (ut-test-suite-test-dir suite)
-          (format "src/%sTests.c" (ut-test-suite-name suite))))
+          (format "src/%sTests.cc" (ut-test-suite-name suite))))
 
 (ut-define-framework cppunit
   :build-process-fn #'ut-cppunit-build-process
@@ -244,6 +244,27 @@ FILE-NAME, TEST-NAME and PROJECT-NAME are passed to copyright."
   :new-project-fn #'ut-cppunit-setup-new-project
   :new-test-suite-fn #'ut-cppunit-setup-new-test-suite
   :new-test-fn #'ut-cppunit-setup-new-test)
+
+;; Everything past here may be a mistake
+
+(defun ut-new-cppunit-project (project project-dir)
+  "Create a barebones cppunit PROJECT in PROJECT-DIR."
+  (interactive
+   (let* ((name (read-string "Project Name: "))
+          (dir (read-directory-name "Project Directory: " ut-root-project-dir
+                                    (f-join ut-root-project-dir name)
+                                    nil (f-join ut-root-project-dir name))))
+     (list name dir)))
+  
+  ;; First create the project root directory
+  (make-directory project-dir)
+  ;; then the src and test directory
+  (make-directory (f-join project-dir "src"))
+  (make-directory (f-join project-dir "tests"))
+  ;; then the default configure.ac file
+  ;; touch some necessary files for autobuilding
+  ;; make a default main file
+)
 
 (provide 'ut-cppunit-framework)
 

@@ -26,17 +26,18 @@
 (require 'ut)
 (require 'ut-util)
 (require 'ut-common-framework)
-;(require 'ut-cppunit-framework)
+(require 'ut-cppunit-framework)
 ;(require 'ut-cunit-framework)
 
 ; UT Testing files
 (require 'test-helpers)
 (require 'test-ut-conf)
+(require 'ut-mock-framework)
 ;(require 'test-ut-draw)
 ;(require 'test-ut-result)
 (require 'test-ut-test-suite)
 (require 'test-ut-framework)
-;(require 'test-ut-cppunit-framework)
+(require 'test-ut-cppunit-framework)
 ;(require 'test-ut-common-framework)
 
 

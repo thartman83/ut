@@ -193,7 +193,8 @@ and contain values. All other hooks will be bound but have a value of nil."
   (should (string= (funcall (symbol-value (ut-framework-new-test-suite-hook 'mock)))
                    "redefine successful"))
   (should (string= (funcall (symbol-value (ut-framework-new-test-hook 'mock)))
-                   "redefine successful")))
+                   "redefine successful"))
+  (ut-define-mock-framework))
 
 (ert-deftest test-ut-define-framework-failure-no-clobber ()
   "Test on error signal during ut-define-framework doesn't clobber existing definition."

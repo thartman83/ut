@@ -43,7 +43,8 @@
   (declare (indent 1))
   (let ((prop (gensym))
         (val (gensym)))
-    `(let ,(map-plist #'(lambda (prop val) (list (intern (subseq (symbol-name prop) 1)) val))
+    `(let ,(map-plist #'(lambda (prop val)
+                          (list (intern (subseq (symbol-name prop) 1)) val))
                       plist)
        ,@body)))
 

@@ -1,5 +1,4 @@
 LICENSE
-#include <iostream>
 #include <cppunit/extensions/TestFactoryRegistry.h>
 #include <cppunit/CompilerOutputter.h>
 #include <cppunit/TestResult.h>

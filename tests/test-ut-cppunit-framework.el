@@ -18,6 +18,7 @@
 ;; 
 
 (require 'f)
+(require 'ut)
 (require 'test-helpers)
 (require 'ut-cppunit-framework)
 
@@ -36,7 +37,7 @@
               ut-cppunit-test-proto-text
               ut-cppunit-test-impl-text)))
 
-(ert-defm4test ut-test-cppunit-default-configure.ac "cppunit"
+(ert-defm4test ut-test-cppunit-configure.ac "cppunit"
                ut-cppunit-default-configure.ac
                (ht (:project-name "Foo"))
                "cppunit-configure.ac")
@@ -52,7 +53,7 @@
                    (:test-suite "bar"))
                "cppunit-src-makefile.am")
 
-(ert-defm4test ut-test-cppunit-main.cc "cppunit" ut-cppunit-default-main.cc
+(ert-defm4test ut-test-cppunit-default-main.cc "cppunit" ut-cppunit-default-main.cc
                (ht (:project-name "utCppunitFrameworkTests")
                    (:test-suite "foo")
                    (:license-info "LICENSE"))
@@ -93,37 +94,45 @@
 
 (ert-deftest ut-test-new-cppunit-project ()
   (with-temporary-dir
+   (make-directory "src")
    (make-directory "tests")
-   (ut-new-conf "./.tests" "fooProject" (f-join (f-expand default-directory) "tests") 'cppunit)
-   (should (f-directory? (f-join (f-expand default-directory) "tests")))
-   (should (f-exists? (f-join (f-expand default-directory) "tests/Makefile.am")))))
+   (let ((conf (ut-conf-new ".tests" "foo" "tests" 'cppunit)))
+
+     (should (f-exists? (f-join (f-expand default-directory) "tests/Makefile.am")))
+     )))
 
 (ert-deftest ut-test-new-cppunit-test-suite ()
-  (ut-reset-conf)
   (with-temporary-dir
    (make-directory "config")
    (make-directory "src")
    (make-directory "bin")
    (make-directory "tests")
-   (f-write-text ut-test-configure.ac 'utf-8 "configure.ac")
-   (f-write-text ut-test-makefile.am 'utf-8 "Makefile.am")
-   (f-write-text ut-test-cppheader 'utf-8 "src/foo.hh")
-   (f-write-text ut-test-cppsource 'utf-8 "src/foo.cc")
-   (f-write-text ut-test-mainsource 'utf-8 "src/main.cc")
-   (f-write-text ut-test-src-makefile.am 'utf-8 "src/Makefile.am")
-   (mapc #'(lambda (x) (f-write-text "" 'utf-8 x)) '("NEWS" "README" "AUTHORS" "ChangeLog"))
-   (let ((conf (ut-new-conf ".tests" "fooProject" (f-expand default-directory)
-                            (f-join (f-expand default-directory) "tests") 'cppunit)))
-     (should (f-exists? (f-join (ut-test-dir conf) "Makefile.am")))
-     (should (string= (file-contents (f-join (ut-test-dir conf) "Makefile.am")) "SUBDIRS = "))
+   (f-write-text ut-test-cppunit-configure.ac 'utf-8 "configure.ac")
+   (f-write-text ut-test-cppunit-makefile.am 'utf-8 "Makefile.am")
+   (f-write-text ut-test-cppunit-cppheader 'utf-8 "src/foo.hh")
+   (f-write-text ut-test-cppunit-cppsource 'utf-8 "src/foo.cc")
+   (f-write-text ut-test-cppunit-mainsource 'utf-8 "src/main.cc")
+   (f-write-text ut-test-cppunit-src-makefile.am 'utf-8 "src/Makefile.am")
+   (mapc #'(lambda (x) (f-write-text "" 'utf-8 x))
+         '("NEWS" "README" "AUTHORS" "ChangeLog"))
+   (let ((conf (ut-conf-new ".tests" "fooProject" (f-expand default-directory)
+                            (f-join (f-expand default-directory) "tests")
+                            'cppunit)))
+     (should (f-exists? (f-join (ut-conf-test-dir conf) "Makefile.am")))
+     (should (string= (file-contents (f-join (ut-conf-test-dir conf) "Makefile.am"))
+                      "SUBDIRS = "))
      (make-directory "tests/fooTests")
-     (let ((ts (ut-new-test-suite conf "foo" (f-join (ut-test-dir conf) "fooTests") 'cppunit)))
-       (should (f-directory? (f-join (f-expand default-directory) "tests/fooTests")))
-       (should (f-contains? "SUBDIRS =.*fooTests " (f-join (ut-test-dir conf) "Makefile.am")))
+     (let ((ts (ut-new-test-suite conf "foo" (f-join (ut-conf-test-dir conf)
+                                                     "fooTests") 'cppunit)))
+       (should (f-directory? (f-join (f-expand default-directory)
+                                     "tests/fooTests")))
+       (should (f-contains? "SUBDIRS =.*fooTests " (f-join (ut-conf-test-dir conf)
+                                                           "Makefile.am")))
        (should (= (call-process-shell-command "autoreconf -i") 0))
        (should (= (call-process-shell-command "./configure") 0))
        (cd "tests/fooTests")
-       (should (string= (ut-test-suite-build-command ts) (concat "make -C fooTests")))
+       (should (string= (ut-test-suite-build-command ts)
+                        (concat "make -C fooTests")))
        (should (f-directory? "src"))
        (should (f-directory? "bin"))
        (should (f-directory? "data"))
@@ -138,7 +147,6 @@
        (should (eq 0 (process-exit-status (get-process "run"))))))))
 
 (ert-deftest ut-test-add-makefile.am-subdir ()
-  (ut-reset-conf)
   (with-temporary-dir
    ;; Test error message when trying to add to non-existant Makefile.am file
    (should-error (ut-add-makefile.am-subdir "bar" "Makefile.am")
@@ -152,18 +160,21 @@
    (ut-add-makefile.am-subdir "bar" "Makefile.am")
    (let* ((text (f-read "Makefile.am"))
           (subdirs (if (string-match "SUBDIRS[ \t]*=\\(.*\\)$" text)
-                       (split-string (substring text (match-beginning 1) (match-end 1)))
+                       (split-string (substring text (match-beginning 1)
+                                                (match-end 1)))
                      nil)))
      (should (not (null subdirs)))
      (should (string-match "SUBDIRS[ \t]* =\\(.*\\)$" text))
-     (should (member "bar" (split-string (substring text (match-beginning 1) (match-end 1))
+     (should (member "bar" (split-string (substring text (match-beginning 1)
+                                                    (match-end 1))
                                          " " t))))
    ;; Test adding multiple subdir works
    (ut-add-makefile.am-subdir "baz" "Makefile.am")
    (ut-add-makefile.am-subdir "bob" "Makefile.am")
    (let* ((text (f-read "Makefile.am"))
           (subdirs (if (string-match "SUBDIRS[ \t]*=\\(.*\\)$" text)
-                       (split-string (substring text (match-beginning 1) (match-end 1)))
+                       (split-string (substring text (match-beginning 1)
+                                                (match-end 1)))
                      nil)))
      (should (not (null subdirs)))
      (should (= (length subdirs) 4))
@@ -175,7 +186,8 @@
    (ut-add-makefile.am-subdir "bar" "Makefile.am")
    (let* ((text (f-read "Makefile.am"))
           (subdirs (if (string-match "SUBDIRS[ \t]*=\\(.*\\)$" text)
-                       (split-string (substring text (match-beginning 1) (match-end 1)))
+                       (split-string (substring text (match-beginning 1)
+                                                (match-end 1)))
                      nil)))
      (should (not (null subdirs)))
      (should (= (length subdirs) 4))
@@ -184,12 +196,12 @@
                              (list "foo" "bar" "baz" "bob")))))))
 
 (ert-deftest ut-test-add-ac-config-files ()
-  (ut-reset-conf)
   (with-temporary-dir
    ;; Test error message when trying to add to non-existant configure.ac
    (should-error (ut-add-ac-config-files "tests/foo" "configure.ac")
                  "configure.ac does not exist")
-   ;; Test error message when trying to add to a file that doesn't look like a configure.ac file
+   ;; Test error message when trying to add to a file that doesn't
+   ;; look like a configure.ac file
    (f-write "Some data" 'utf-8 "somefile")
    (should-error (ut-add-ac-config-files "tests/fooTests" "somefile")
                  "somefile does not contain AC_OUTPUT, may not be autoconf file")
@@ -198,7 +210,8 @@
    (ut-add-ac-config-files "fooTests" "configure.ac")
    (should (f-contains? "# fooTests" "configure.ac"))
    (should (f-contains? "AC_CONFIG_FILES(\\[fooTests/Makefile\\])" "configure.ac"))
-   (should (f-contains? "AC_CONFIG_FILES(\\[fooTests/src/Makefile\\])" "configure.ac"))
+   (should (f-contains? "AC_CONFIG_FILES(\\[fooTests/src/Makefile\\])"
+                        "configure.ac"))
    ;; Test adding a test subdir again doesn't add multiple entries
    (ut-add-ac-config-files "fooTests" "configure.ac")
    (let ((lines (split-string (f-read "configure.ac") "\n")))
