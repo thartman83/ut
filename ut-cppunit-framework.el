@@ -264,7 +264,31 @@ FILE-NAME, TEST-NAME and PROJECT-NAME are passed to copyright."
   ;; then the default configure.ac file
   ;; touch some necessary files for autobuilding
   ;; make a default main file
-)
+  )
+
+(defvar *ut-cppunit-autotool-touch-files*
+  (list "NEWS" "AUTHORS" "COPYING" "LICENSE" "INSTALL" "README" "ChangeLog"))
+
+(defvar *ut-cppunit-directories* (list "config" "src" "tests"))
+
+(defun ut-cppunit-setup-autotools-env (dir &optional project-name)
+  "Setup all necessary files for auto tools in DIR with PROJECT-NAME."
+  (when (null project-name)
+    (setf project-name (car (reverse (f-split (f-expand dir))))))
+  (mapc #'f-touch (mapcar #'(lambda (p) (f-join dir p))
+                          *ut-cppunit-autotool-touch-files*))
+  (mapc #'f-mkdir (mapcar #'(lambda (p) (f-join dir p))
+                          *ut-cppunit-directories*))
+  (ut-m4-expand-file "cppunit" "ut-cppunit-default-configure_ac.m4"
+                     (ht (:project-name project-name))
+                     "configure.ac")
+  (ut-m4-expand-file "cppunit" "ut-cppunit-default-top-makefile_am.m4"
+                     (ht) "Makefile.am")
+  (ut-m4-expand-file "cppunit" "ut-cppunit-src-makefile_am.m4"
+                     (ht (:project-name project-name))
+                     "src/Makefile.am")
+  (ut-m4-expand-file "cppunit" "ut-cppunit-test-makefile_am.m4"
+                     (ht) "tests/Makefile.am"))
 
 (provide 'ut-cppunit-framework)
 

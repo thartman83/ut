@@ -1,1 +1,6 @@
-SUBDIRS = src
+AUTOMAKE_OPTIONS = 1.4
+ACLOCAL_AMFLAGS = -I config
+
+SUBDIRS = src tests
+
+EXTRA_DIST = BUGS INSTALL-unix $(m4sources)

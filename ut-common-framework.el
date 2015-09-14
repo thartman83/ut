@@ -54,7 +54,7 @@
 (defun ut-get-copyright ()
   "Return the expanded copyright text."
   (with-temp-buffer
-    (ut-m4-expand "common" ut-default-copyright
+    (ut-m4-expand-text "common" ut-default-copyright
                   (ht (:ut-full-name ut-full-name)
                       (:ut-email ut-email)))
     (buffer-substring (point-min) (point-max))))
@@ -156,14 +156,14 @@
 (defun ut-m4-expand-text (text defines &optional destination)
   "Expand m4 TEXT.
 
-Pass key value pairs in DEFINES as -I[KEY]=[VALUE] arguments to m4.
+Pass key value pairs in DEFINES as -D[KEY]=[VALUE] arguments to m4.
 DESTINATION follows the same rules as the destination keyword in
 `call-process-region'."
   (with-temp-buffer
     (kill-region (point-min) (point-max))
     (insert text)
     (let ((define-list
-           (ht-map #'(lambda (key val)
+            (ht-map #'(lambda (key val)
                        (format "-D%s=%s"
                                (s-replace "-" "_" (subseq (symbol-name key) 1)) val))
                    defines)))
@@ -171,11 +171,25 @@ DESTINATION follows the same rules as the destination keyword in
              (append (list (point-min) (point-max) "m4" t destination t)
                      define-list (list "-"))))))
 
-(defun ut-m4-expand-file (framework-name file defines &optional destination)
-  "Expand FRAMEWORK-NAME/FILE.
-Pass DEFINES and DESTINATION to ut-m4-expand-text."
-  (ut-m4-expand-text (f-read-text (f-join ut-m4-dir framework-name file))
-                     defines destination))
+;; (defun ut-m4-expand-file (framework-name file defines &optional destination)
+;;   "Expand FRAMEWORK-NAME/FILE.
+;; Pass DEFINES and DESTINATION to ut-m4-expand-text."
+;;   (ut-m4-expand-text (f-read-text (f-join ut-m4-dir framework-name file))
+;;                      defines destination))
+
+(defun ut-m4-expand-file (framework-name file defines destination)
+  "Expands FRAMEWORK-NAME/FILE with DEFINES to DESTINATION."
+  (let* ((defines
+          (s-join " " (ht-map #'(lambda (key val)
+                                  (format "-D%s=%s"
+                                          (s-replace "-" "_" (subseq (symbol-name key) 1)) val))
+                              defines)))
+         (m4-file (f-join ut-m4-dir framework-name file))
+         (m4-output (shell-command-to-string (s-join " " (list "m4" defines m4-file)))))
+    (if (stringp destination)
+        (f-write m4-output 'utf-8 destination)
+      (when destination
+        m4-output))))
 
 (provide 'ut-common-framework)
 

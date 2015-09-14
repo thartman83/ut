@@ -7,7 +7,7 @@ m4_define([project_name`'_minor_version], [1])
 m4_define([project_name`'_version], \
           [project_name`'_major_version.`'project_name`'_minor_version])
 
-AC_INIT([project_name`'],[project_name`'_version])
+AC_INIT([project_name`'],[0.1])
 AC_CONFIG_MACRO_DIR([config])
 AM_INIT_AUTOMAKE([1.11 dist-bzip2])
 LT_PREREQ([2.2])
@@ -25,12 +25,12 @@ AC_PROG_LIBTOOL
 AC_LTDL_DLLIB
 PKG_CHECK_MODULES([CPPUNIT], [cppunit])
 
-# Check for standard libraries
-AC_CXX_HAVE_STD
-AC_CXX_HAVE_STL
+dnl `dnl Check for standard libraries'
+dnl AC_CXX_HAVE_STD
+dnl AC_CXX_HAVE_STL
 
 AC_CONFIG_FILES([Makefile])
-AC_CONFIG_FILES([src/Makefile]
+AC_CONFIG_FILES([src/Makefile])
 AC_CONFIG_FILES([tests/Makefile])
 
 AC_OUTPUT
