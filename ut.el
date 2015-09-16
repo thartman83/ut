@@ -1,6 +1,6 @@
 ;;; ut.el --- Emacs integration for unit testing
 
-;; Copyright (c) 2013 Thomas Hartman (rokstar83@gmail.com)
+;; Copyright (c) 2013 Thomas Hartman (thomas.lees.hartman@gmail.com)
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License
