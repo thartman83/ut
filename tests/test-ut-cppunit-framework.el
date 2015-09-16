@@ -27,47 +27,48 @@
 (ert-deftest ut-test-cppunit-m4-files-exist ()
   (mapc #'(lambda (custom-file)
             (should (f-exists? (f-join ut-m4-dir "cppunit/" custom-file))))
-        (list ut-cppunit-default-configure.ac
-              ut-cppunit-default-top-makefile.am
-              ut-cppunit-default-src-makefile.am
-              ut-cppunit-default-main.cc
-              ut-cppunit-default-test-suite.hh
-              ut-cppunit-default-test-suite.cc
+        (list ut-cppunit-configure.ac
+              ut-cppunit-test-suite-top-makefile.am
+              ut-cppunit-test-suite-src-makefile.am
+              ut-cppunit-test-suite-main.cc
+              ut-cppunit-test-suite-header.hh
+              ut-cppunit-test-suite-source.cc
               ut-cppunit-add-test-hdr-text
               ut-cppunit-test-proto-text
               ut-cppunit-test-impl-text)))
 
 (ert-defm4test ut-test-cppunit-configure.ac "cppunit"
-               ut-cppunit-default-configure.ac
+               ut-cppunit-configure.ac
                (ht (:project-name "Foo"))
                "cppunit-configure.ac")
 
-(ert-defm4test ut-test-cppunit-top-makefile.am "cppunit"
-               ut-cppunit-default-top-makefile.am
+(ert-defm4test ut-test-cppunit-test-suite-top-makefile.am "cppunit"
+               ut-cppunit-test-suite-top-makefile.am
                (ht)
                "cppunit-top-makefile.am")
 
-(ert-defm4test ut-test-cppunit-src-makefile.am "cppunit"
-               ut-cppunit-default-src-makefile.am
+(ert-defm4test ut-test-cppunit-test-suite-src-makefile.am "cppunit"
+               ut-cppunit-test-suite-src-makefile.am
                (ht (:project-dir "/home/someone/projects/foo")
                    (:test-suite "bar"))
                "cppunit-src-makefile.am")
 
-(ert-defm4test ut-test-cppunit-default-main.cc "cppunit" ut-cppunit-default-main.cc
+(ert-defm4test ut-test-cppunit-test-suite-main.cc "cppunit"
+               ut-cppunit-test-suite-main.cc
                (ht (:project-name "utCppunitFrameworkTests")
                    (:test-suite "foo")
                    (:license-info "LICENSE"))
                "cppunit-main.cc")
 
-(ert-defm4test ut-test-cppunit-default-test-suite.hh "cppunit"
-               ut-cppunit-default-test-suite.hh
+(ert-defm4test ut-test-cppunit-test-suite-header.hh "cppunit"
+               ut-cppunit-test-suite-header.hh
                (ht (:project-name "utCppunitFrameworkTests")
                    (:test-suite "Foo")
                    (:license-info "LICENSE"))
                "cppunit-test-suite.hh")
 
-(ert-defm4test ut-test-cppunit-default-test-suite.cc "cppunit"
-               ut-cppunit-default-test-suite.cc
+(ert-defm4test ut-test-cppunit-test-suite-source.cc "cppunit"
+               ut-cppunit-test-suite-source.cc
                (ht (:project-name "utCppunitFrameworkTests")
                    (:test-suite "Foo")
                    (:license-info "LICENSE"))
@@ -107,7 +108,7 @@
    (make-directory "src")
    (make-directory "bin")
    (make-directory "tests")
-   (f-write-text ut-cppunit-default-configure.ac 'utf-8 "configure.ac")
+   (f-write-text ut-cppunit-configure.ac 'utf-8 "configure.ac")
    (f-write-text ut-cppunit-default-top-makefile.am 'utf-8 "Makefile.am")
    (f-write-text ut-cppunit-default-cppheader 'utf-8 "src/foo.hh")
    (f-write-text ut-cppunit-default-cppsource 'utf-8 "src/foo.cc")

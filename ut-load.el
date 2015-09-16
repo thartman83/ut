@@ -40,6 +40,4 @@
 (require 'test-ut-cppunit-framework)
 ;(require 'test-ut-common-framework)
 
-
-
 ;;; ut-load.el ends here

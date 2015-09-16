@@ -28,37 +28,37 @@
   :prefix "ut-cppunit"
   :group 'ut)
 
-(defcustom ut-cppunit-default-configure.ac "ut-cppunit-default-configure_ac.m4"
+(defcustom ut-cppunit-configure.ac "ut-cppunit-configure_ac.m4"
   "Default text for project level configure.ac."
   :group 'ut-cppunit
   :risky t
   :type 'string)
 
-(defcustom ut-cppunit-default-top-makefile.am "ut-cppunit-default-top-makefile_am.m4"
+(defcustom ut-cppunit-test-suite-top-makefile.am "ut-cppunit-test-suite-top-makefile_am.m4"
   "Default value of the top makefile for a test suite."
   :group 'ut-cppunit
   :risky t
   :type 'string)
 
-(defcustom ut-cppunit-default-src-makefile.am "ut-cppunit-default-src-makefile_am.m4"
+(defcustom ut-cppunit-test-suite-src-makefile.am "ut-cppunit-test-suite-src-makefile_am.m4"
   "Default src level makefile for a test suite."
   :group 'ut-cppunit
   :risky t
   :type 'string)
 
-(defcustom ut-cppunit-default-main.cc "ut-cppunit-default-main_cc.m4"
+(defcustom ut-cppunit-test-suite-main.cc "ut-cppunit-test-suite-main_cc.m4"
   "Default test-suite main file."
   :group 'ut-cppunit
   :risky t
   :type 'string)
 
-(defcustom ut-cppunit-default-test-suite.hh "ut-cppunit-default-test-suite_hh.m4"
+(defcustom ut-cppunit-test-suite-header.hh "ut-cppunit-test-suite-header_hh.m4"
   "Default header file for a test suite."
   :group 'ut-cppunit
   :risky t
   :type 'string)
 
-(defcustom ut-cppunit-default-test-suite.cc "ut-cppunit-default-test-suite_cc.m4"
+(defcustom ut-cppunit-test-suite-source.cc "ut-cppunit-test-suite-source_cc.m4"
   "Default source file for a test suite."
   :group 'ut-cppunit
   :risky t
@@ -131,15 +131,15 @@
   (let* ((name (ut-test-suite-name test-suite))
          (dir (f-join (ut-conf-test-dir conf) (ut-test-suite-test-dir test-suite)))
          (top-makefile.am-text
-          (ut-format (ut-format ut-cppunit-default-top-makefile.am test-suite) conf))
+          (ut-format (ut-format ut-cppunit-test-suite-top-makefile.am test-suite) conf))
          (src-makefile.am-text
-          (ut-format (ut-format ut-cppunit-default-src-makefile.am test-suite) conf))
+          (ut-format (ut-format ut-cppunit-test-suite-src-makefile.am test-suite) conf))
          (mainfile-text
-          (ut-format (ut-format ut-cppunit-default-mainfile test-suite) conf))
+          (ut-format (ut-format ut-cppunit-test-suite-main.cc test-suite) conf))
          (testheader-text
-          (ut-format (ut-format ut-cppunit-default-testheader test-suite) conf))
+          (ut-format (ut-format ut-cppunit-test-suite-header.hh test-suite) conf))
          (testsource-text
-          (ut-format (ut-format ut-cppunit-default-testsource test-suite) conf))
+          (ut-format (ut-format ut-cppunit-test-suite-source.cc test-suite) conf))
          (project-name (ut-project-name conf)))
     ;; create test-suites directory structure
     (ut-cppunit-create-test-suite-subdirs dir)
@@ -279,15 +279,15 @@ FILE-NAME, TEST-NAME and PROJECT-NAME are passed to copyright."
                           *ut-cppunit-autotool-touch-files*))
   (mapc #'f-mkdir (mapcar #'(lambda (p) (f-join dir p))
                           *ut-cppunit-directories*))
-  (ut-m4-expand-file "cppunit" "ut-cppunit-default-configure_ac.m4"
+  (ut-m4-expand-file "cppunit" "ut-cppunit-configure_ac.m4"
                      (ht (:project-name project-name))
                      "configure.ac")
-  (ut-m4-expand-file "cppunit" "ut-cppunit-default-top-makefile_am.m4"
+  (ut-m4-expand-file "cppunit" "ut-cppunit-test-suite-top-makefile_am.m4"
                      (ht) "Makefile.am")
-  (ut-m4-expand-file "cppunit" "ut-cppunit-src-makefile_am.m4"
+  (ut-m4-expand-file "cppunit" "ut-cppunit-test-suite-src-makefile_am.m4"
                      (ht (:project-name project-name))
                      "src/Makefile.am")
-  (ut-m4-expand-file "cppunit" "ut-cppunit-test-makefile_am.m4"
+  (ut-m4-expand-file "cppunit" "ut-cppunit-test-suite-makefile_am.m4"
                      (ht) "tests/Makefile.am"))
 
 (provide 'ut-cppunit-framework)
