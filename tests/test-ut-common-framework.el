@@ -19,5 +19,36 @@
 
 ;;; Code:
 
+(ert-deftest test-line-by-pos ()
+  "Test line-by-pos."
+  (should-error (line-by-pos 10 "")
+                "Position (10) is greater than the length of the search text (0)")
+  (should-error (line-by-pos 0 "")
+                "Position (0) is greater than the length of the search text (0)")
+  (should (= (line-by-pos 0 "a") 1))
+  (should-error (line-by-pos 1 "a")
+                "Position (1) is greater than the length of the search text (1)")
+  (should (= (line-by-pos 2 "foo\nbar") 1))
+  (should (= (line-by-pos 3 "foo\nbar") 1))
+  (should (= (line-by-pos 4 "foo\nbar") 2))
+  (should (= (line-by-pos (1- (length "foo\nbar")) "foo\nbar") 2))
+  (should (= (line-by-pos (1- (length "foo\nbar\n")) "foo\nbar\n") 2)))
+
+(ert-deftest test-ut-add-source-to-makefile.am ()
+  (with-temporary-dir
+   (should-error (ut-add-source-to-makefile.am "some_file.cc" "some_program" "Makefile.am")
+                 "Makefile.am does not exist")
+   (f-touch "Makefile.am")
+   (should-error (ut-add-source-to-makefile.am "some_file.cc" "some_program" "Makefile.am")
+                 "Could not find some_program_SOURCES in Makefile.am")
+   ;; Test with nothing in the SOURCES list
+   (f-write "bin_PROGRAMS = foo\nfoo_SOURCES = " 'utf-8 "Makefile.am")
+   (ut-add-source-to-makefile.am "foo.cc" "foo" "Makefile.am")
+   (should (s-equals? (f-read "Makefile.am") "bin_PROGRAMS = foo\nfoo_SOURCES = foo.cc"))
+   ;; Test with an entry in the SOURCES list
+   (f-write "bin_PROGRAMS = foo\nfoo_SOURCES = foo.cc" 'utf-8 "Makefile.am")
+   (ut-add-source-to-makefile.am "bar.cc" "foo" "Makefile.am")
+   ))
+
 (provide 'test-ut-common-framework)
 ;;; test-ut-common-framework.el ends here

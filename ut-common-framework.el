@@ -109,6 +109,26 @@
                          (substring text i))
                  'utf-8 configure.ac)))))
 
+(defun ut-add-source-to-makefile.am (new-source program makefile.am)
+  "Add NEW-SOURCE to MAKEFILE.AM for compilation"
+  (when (not (f-exists? makefile.am))
+    (error "%s does not exist" makefile.am))
+  (let ((text (f-read makefile.am)))
+    (when (not (string-match (format "%s_SOURCES =\\(*\\)" program) text))
+      (error "Could not find %s_SOURCES in %s" program makefile.am))
+    (let ((i (match-beginning 0))
+          (j (match-end 0))
+          (new-source-text (concat "$(top_builddir)/" new-source)))
+      ;; Check to make sure there isn't a line continuation character `\' at EOL
+      (while (string= (substring text (1- j) 1) "\\")
+        (string-match "^.*$" text (1+ j))
+        (setf i (match-beginning 0))
+        (setf j (match-beginning 0)))
+      ;; Check to see if we should setup the new source file on a new line (80 char rule)
+      (if (> (+ (- j i) (length new-source-text)) 80)
+          )
+      )))
+
 (defun ut-format (str test-suite)
   "Scan the STR for %*% and replace with the hash value associated in TEST-SUITE."
   (let ((retval str))
@@ -153,6 +173,10 @@
           (revert-buffer t nil t))
       (switch-to-buffer-other-window (find-file-noselect file-name)))))
 
+(defun ut-line-no-by-pos (pos file)
+  "Return the line number of POS within FILE."
+  (line-by-pos pos (f-read file)))
+
 (defun ut-m4-expand-text (text defines &optional destination)
   "Expand m4 TEXT.
 
@@ -190,6 +214,26 @@ DESTINATION follows the same rules as the destination keyword in
         (f-write m4-output 'utf-8 destination)
       (when destination
         m4-output))))
+
+;; (defun line-by-pos-split (pos text)
+;;   "Return the line number of POS in text."
+;;   (if (or (= pos 0) (null text))
+;;       1
+;;     (+ (if (string= (car text-list) "\n") 1 0)
+;;        (line-by-pos-split (1- pos) (cdr text-list)))))
+
+(defun line-by-pos (pos text)
+  "Return the line number of POS in TEXT."
+  (when (>= pos (length text))
+    (error "Position (%s) is greater than the length of the search text (%s)"
+           pos (length text)))
+  (let ((line-no 1))
+    (do ((x 0 (1+ x)))
+        ((>= x pos))
+      (when (= (elt text x) ?\n)
+        (incf line-no)))
+    line-no))
+
 
 (provide 'ut-common-framework)
 

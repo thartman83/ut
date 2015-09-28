@@ -28,19 +28,43 @@
   :prefix "ut-cppunit"
   :group 'ut)
 
+;;; Project level files
+
 (defcustom ut-cppunit-configure.ac "ut-cppunit-configure_ac.m4"
   "Default text for project level configure.ac."
   :group 'ut-cppunit
   :risky t
   :type 'string)
 
-(defcustom ut-cppunit-test-suite-top-makefile.am "ut-cppunit-test-suite-top-makefile_am.m4"
+(defcustom ut-cppunit-top-makefile.am "ut-cppunit-top-makefile_am.m4"
+  "Default Makefile.am at the project root."
+  :group 'ut-cppunit
+  :risky t
+  :type 'string)
+
+(defcustom ut-cppunit-src-makefile.am "ut-cppunit-src-makefile_am.m4"
+  "Default Makefile.am in the project src dir."
+  :group 'ut-cppunit
+  :risky t
+  :type 'string)
+
+(defcustom ut-cppunit-tests-makefile.am "ut-cppunit-tests-makefile_am.m4"
+  "Default Makefile.am in the project tests dir."
+  :group 'ut-cppunit
+  :risky t
+  :type 'string)
+
+;;; Test Suite level files
+
+(defcustom ut-cppunit-test-suite-top-makefile.am
+  "ut-cppunit-test-suite-top-makefile_am.m4"
   "Default value of the top makefile for a test suite."
   :group 'ut-cppunit
   :risky t
   :type 'string)
 
-(defcustom ut-cppunit-test-suite-src-makefile.am "ut-cppunit-test-suite-src-makefile_am.m4"
+(defcustom ut-cppunit-test-suite-src-makefile.am
+  "ut-cppunit-test-suite-src-makefile_am.m4"
   "Default src level makefile for a test suite."
   :group 'ut-cppunit
   :risky t
@@ -63,6 +87,8 @@
   :group 'ut-cppunit
   :risky t
   :type 'string)
+
+;;; Test suite text
 
 (defcustom ut-cppunit-add-test-hdr-text "ut-cppunit-add-test-hdr-text.m4"
   "Default code to add a new test to a cppunit test-suite."
@@ -128,6 +154,19 @@
 
 (defun ut-cppunit-setup-new-test-suite (test-suite conf)
   "Setup a new TEST-SUITE for CONF."
+  (let ((test-suite-name (ut-test-suite-name test-suite))
+        (test-suite-dir (f-join (ut-conf-project-dir conf)
+                                (ut-conf-test-dir conf)
+                                (ut-conf-test-suite-test-dir test-suite))))
+    (f-mkdir test-suite-dir)
+    (mapc #'(lamdba (pair)
+                    (ut-m4-expand-file "cppunit" (first pair) conf
+                                       (f-join (ut-conf-project-dir conf)
+                                               (ut-conf-test-dir conf)
+                                               
+                                               (second pair))))
+          '()))
+  
   (let* ((name (ut-test-suite-name test-suite))
          (dir (f-join (ut-conf-test-dir conf) (ut-test-suite-test-dir test-suite)))
          (top-makefile.am-text
@@ -247,25 +286,6 @@ FILE-NAME, TEST-NAME and PROJECT-NAME are passed to copyright."
 
 ;; Everything past here may be a mistake
 
-(defun ut-new-cppunit-project (project project-dir)
-  "Create a barebones cppunit PROJECT in PROJECT-DIR."
-  (interactive
-   (let* ((name (read-string "Project Name: "))
-          (dir (read-directory-name "Project Directory: " ut-root-project-dir
-                                    (f-join ut-root-project-dir name)
-                                    nil (f-join ut-root-project-dir name))))
-     (list name dir)))
-  
-  ;; First create the project root directory
-  (make-directory project-dir)
-  ;; then the src and test directory
-  (make-directory (f-join project-dir "src"))
-  (make-directory (f-join project-dir "tests"))
-  ;; then the default configure.ac file
-  ;; touch some necessary files for autobuilding
-  ;; make a default main file
-  )
-
 (defvar *ut-cppunit-autotool-touch-files*
   (list "NEWS" "AUTHORS" "COPYING" "LICENSE" "INSTALL" "README" "ChangeLog"))
 
@@ -279,16 +299,26 @@ FILE-NAME, TEST-NAME and PROJECT-NAME are passed to copyright."
                           *ut-cppunit-autotool-touch-files*))
   (mapc #'f-mkdir (mapcar #'(lambda (p) (f-join dir p))
                           *ut-cppunit-directories*))
-  (ut-m4-expand-file "cppunit" "ut-cppunit-configure_ac.m4"
+  (ut-m4-expand-file "cppunit" ut-cppunit-configure.ac
                      (ht (:project-name project-name))
-                     "configure.ac")
+                     (f-join dir "configure.ac"))
   (ut-m4-expand-file "cppunit" "ut-cppunit-test-suite-top-makefile_am.m4"
-                     (ht) "Makefile.am")
+                     (ht) (f-join dir "Makefile.am"))
   (ut-m4-expand-file "cppunit" "ut-cppunit-test-suite-src-makefile_am.m4"
                      (ht (:project-name project-name))
-                     "src/Makefile.am")
+                     (f-join "src/Makefile.am"))
   (ut-m4-expand-file "cppunit" "ut-cppunit-test-suite-makefile_am.m4"
-                     (ht) "tests/Makefile.am"))
+                     (ht) (f-join "tests/Makefile.am")))
+
+(defun ut-new-cppunit-project (project-dir project-name)
+  "Create a barebones cppunit PROJECT-DIR for PROJECT-NAME."
+  (interactive
+   (let* ((name (read-string "Project Name: "))
+          (dir (read-directory-name "Project Directory: " ut-root-project-dir
+                                    (f-join ut-root-project-dir name)
+                                    nil (f-join ut-root-project-dir name))))
+     (list name dir)))
+  (ut-cppunit-setup-autotools-env project-dir project-name))
 
 (provide 'ut-cppunit-framework)
 

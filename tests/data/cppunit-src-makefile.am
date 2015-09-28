@@ -1,5 +1,4 @@
-AM_CPPFLAGS = -I$(top_builddir)/src -I/usr/local/include/
+AM_CPPFLAGS = -I$(top_builddir)/src
 
-bin_PROGRAMS = barTests
-barTests_SOURCES = main.cc barTests.cc $(top_builddir)/src/bar.cc
-barTests_LDADD = -L/usr/local/lib/ -lcppunit -lcppunitsexpoutputter
+bin_PROGRAMS = Foo
+Foo_SOURCES = \

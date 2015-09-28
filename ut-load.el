@@ -38,6 +38,6 @@
 (require 'test-ut-test-suite)
 (require 'test-ut-framework)
 (require 'test-ut-cppunit-framework)
-;(require 'test-ut-common-framework)
+(require 'test-ut-common-framework)
 
 ;;; ut-load.el ends here

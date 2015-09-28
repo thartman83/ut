@@ -28,6 +28,9 @@
   (mapc #'(lambda (custom-file)
             (should (f-exists? (f-join ut-m4-dir "cppunit/" custom-file))))
         (list ut-cppunit-configure.ac
+              ut-cppunit-top-makefile.am
+              ut-cppunit-src-makefile.am
+              ut-cppunit-tests-makefile.am
               ut-cppunit-test-suite-top-makefile.am
               ut-cppunit-test-suite-src-makefile.am
               ut-cppunit-test-suite-main.cc
@@ -42,16 +45,31 @@
                (ht (:project-name "Foo"))
                "cppunit-configure.ac")
 
+(ert-defm4test ut-test-cppunit-top-makefile.am "cppunit"
+               ut-cppunit-top-makefile.am
+               (ht)
+               "cppunit-top-makefile.am")
+
+(ert-defm4test ut-test-cppunit-src-makefile.am "cppunit"
+               ut-cppunit-src-makefile.am
+               (ht (:project-name "Foo"))
+               "cppunit-src-makefile.am")
+
+(ert-defm4test ut-test-cppunit-tests-makefile.am "cppunit"
+               ut-cppunit-tests-makefile.am
+               (ht)
+               "cppunit-tests-makefile.am")
+
 (ert-defm4test ut-test-cppunit-test-suite-top-makefile.am "cppunit"
                ut-cppunit-test-suite-top-makefile.am
                (ht)
-               "cppunit-top-makefile.am")
+               "cppunit-test-suite-top-makefile.am")
 
 (ert-defm4test ut-test-cppunit-test-suite-src-makefile.am "cppunit"
                ut-cppunit-test-suite-src-makefile.am
                (ht (:project-dir "/home/someone/projects/foo")
                    (:test-suite "bar"))
-               "cppunit-src-makefile.am")
+               "cppunit-test-suite-src-makefile.am")
 
 (ert-defm4test ut-test-cppunit-test-suite-main.cc "cppunit"
                ut-cppunit-test-suite-main.cc
@@ -93,59 +111,24 @@
                    (:license-info "LICENSE"))
                "cppunit-test-impl-text")
 
+
+;;;; ?????
 (ert-deftest ut-test-new-cppunit-project ()
   (with-temporary-dir
    (make-directory "src")
    (make-directory "tests")
-   (let ((conf (ut-conf-new ".tests" "foo" "tests" 'cppunit)))
-
+   (let ((conf (ut-conf-new "Foo" ".tests" "tests" 'cppunit)))
      (should (f-exists? (f-join (f-expand default-directory) "tests/Makefile.am")))
      )))
+;;;; ?????
 
 (ert-deftest ut-test-new-cppunit-test-suite ()
   (with-temporary-dir
-   (make-directory "config")
-   (make-directory "src")
-   (make-directory "bin")
-   (make-directory "tests")
-   (f-write-text ut-cppunit-configure.ac 'utf-8 "configure.ac")
-   (f-write-text ut-cppunit-default-top-makefile.am 'utf-8 "Makefile.am")
-   (f-write-text ut-cppunit-default-cppheader 'utf-8 "src/foo.hh")
-   (f-write-text ut-cppunit-default-cppsource 'utf-8 "src/foo.cc")
-   (f-write-text ut-cppunit-default-mainsource 'utf-8 "src/main.cc")
-   (f-write-text ut-cppunit-default-src-makefile.am 'utf-8 "src/Makefile.am")
-   (mapc #'(lambda (x) (f-write-text "" 'utf-8 x))
-         '("NEWS" "README" "AUTHORS" "ChangeLog"))
-   (let ((conf (ut-conf-new ".tests" "fooProject" (f-expand default-directory)
-                            (f-join (f-expand default-directory) "tests")
-                            'cppunit)))
-     (should (f-exists? (f-join (ut-conf-test-dir conf) "Makefile.am")))
-     (should (string= (file-contents (f-join (ut-conf-test-dir conf) "Makefile.am"))
-                      "SUBDIRS = "))
-     (make-directory "tests/fooTests")
-     (let ((ts (ut-new-test-suite conf "foo" (f-join (ut-conf-test-dir conf)
-                                                     "fooTests") 'cppunit)))
-       (should (f-directory? (f-join (f-expand default-directory)
-                                     "tests/fooTests")))
-       (should (f-contains? "SUBDIRS =.*fooTests " (f-join (ut-conf-test-dir conf)
-                                                           "Makefile.am")))
-       (should (= (call-process-shell-command "autoreconf -i") 0))
-       (should (= (call-process-shell-command "./configure") 0))
-       (cd "tests/fooTests")
-       (should (string= (ut-test-suite-build-command ts)
-                        (concat "make -C fooTests")))
-       (should (f-directory? "src"))
-       (should (f-directory? "bin"))
-       (should (f-directory? "data"))
-       (should (f-exists? "Makefile.am"))
-       (should (f-exists? "src/main.cc"))
-       (should (f-exists? "src/fooTests.hh"))
-       (should (f-exists? "src/fooTests.cc"))
-       (should (f-exists? "src/Makefile.am"))
-       (start-process-shell-command "make" nil (ut-test-suite-build-command ts))
-       (should (eq 0 (process-exit-status (get-process "make"))))
-       (start-process-shell-command "run" nil (ut-test-suite-build-command ts))
-       (should (eq 0 (process-exit-status (get-process "run"))))))))
+   (ut-cppunit-setup-autotools-env default-directory "Foo")
+   (ut-conf-new "Foo" ".conf" "tests" 'cppunit)
+   (f-copy "../tests/cppunit-bar.hh" "src/bar.hh")
+   (f-copy "../tests/cppunit-bar.cc" "src/bar.cc")
+   ))
 
 (ert-deftest ut-test-setup-autotools-env ()
   (with-temporary-dir
@@ -161,6 +144,7 @@
    (should (f-exists? "README"))
    (should (f-exists? "configure.ac"))
    (should (f-exists? "Makefile.am"))
+   ;; Test that an autoreconf and configure are successful on the barebones environment
    (should (= (call-process "autoreconf" nil nil nil "-i") 0))
    (should (= (call-process (f-expand "./configure") nil nil nil) 0))))
 

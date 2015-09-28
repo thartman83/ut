@@ -59,7 +59,7 @@
 
 (defun get-random-string (length)
   "Return a random string of letters and number of size LENGTH."
-  (let ((chars "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"))
+  (let ((chars "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"))
     (if (= length 1)
         (string (elt chars (random (length chars))))
       (concat (string (elt chars (random (length chars))))
