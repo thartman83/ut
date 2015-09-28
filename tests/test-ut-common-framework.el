@@ -48,7 +48,18 @@
    ;; Test with an entry in the SOURCES list
    (f-write "bin_PROGRAMS = foo\nfoo_SOURCES = foo.cc" 'utf-8 "Makefile.am")
    (ut-add-source-to-makefile.am "bar.cc" "foo" "Makefile.am")
-   ))
+   (should (s-equals? (f-read "Makefile.am") "bin_PROGRAMS = foo\nfoo_SOURCES = foo.cc bar.cc"))
+   ;; Test with a multiline entry in the SOURCES list
+   (f-write "bin_PROGRAMS = foo\nfoo_SOURCES = foo.cc bar.cc \\\nbaz.cc" 'utf-8 "Makefile.am")
+   (ut-add-source-to-makefile.am "bob.cc" "foo" "Makefile.am")
+   (should (s-equals? (f-read "Makefile.am")
+                      "bin_PROGRAMS = foo\nfoo_SOURCES = foo.cc bar.cc \\\nbaz.cc bob.cc"))
+   ;; Test with an entry that would extend the SOURCES line past 80
+   (f-write "bin_PROGRAMS = foo\nfoo_SOURCES\nfoo_SOURCES = thisisareallylongfilename.cc"
+            'utf-8 "Makefile.am")
+   (ut-add-source-to-makefile.am "thisisanotherreallyreallylongfilename.cc" "foo" "Makefile.am")
+   (should (s-equals? (f-read "Makefile.am"
+                              "bin_PROGRAMS = foo\nfoo_SOURCES\nfoo_SOURCES = thisisareallylongfilename.cc\\\nthisisanotherreallyreallylongfilename.cc")))))
 
 (provide 'test-ut-common-framework)
 ;;; test-ut-common-framework.el ends here
