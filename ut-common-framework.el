@@ -110,23 +110,33 @@
                  'utf-8 configure.ac)))))
 
 (defun ut-add-source-to-makefile.am (new-source program makefile.am)
-  "Add NEW-SOURCE to MAKEFILE.AM for compilation"
+  "Add NEW-SOURCE for PROGRAM to MAKEFILE.AM for compilation"
   (when (not (f-exists? makefile.am))
     (error "%s does not exist" makefile.am))
-  (let ((text (f-read makefile.am)))
+  (let ((text (f-read makefile.am))
+        (target-start 0)
+        (target-end 0)
+        (new-target-text ""))
     (when (not (string-match (format "%s_SOURCES =\\(.*\\)" program) text))
       (error "Could not find %s_SOURCES in %s" program makefile.am))
-    (let ((i (match-beginning 0))
-          (j (match-end 0))
-          (new-source-text (concat "$(top_builddir)/" new-source)))
-      ;; Check to make sure there isn't a line continuation character `\' at EOL
-      (while (string= (substring text (1- j)) "\\")
-        (string-match "^.*$" text (1+ j))
-        (setf i (match-beginning 0))
-        (setf j (match-end 0)))
-      ;; Check to see if we should setup the new source file on a new line (80 char rule)
-      (if (> (+ (- j i) (length new-source-text)) 80)
-          ()))))
+    (setf target-start (match-beginning 0)
+          target-end (match-end 0))
+    (while (string= (s-right 1 (substring text target-start target-end)) "\\")
+      (string-match "^.*$" text target-end)
+      (setf target-end (match-end 0)))
+    ;; Check to see if we should setup the new source file on a new line (80 char rule)
+    (setf new-target-text
+          (s-concat (substring text target-start target-end)
+                    (if (> (+ (length (first (last (s-lines (substring text target-start target-end)))))
+                              (length new-source))
+                           80)
+                        (s-concat "\\\n" new-source " ")
+                      (s-concat new-source " "))))
+    (f-write (s-concat (substring text 0 target-start)
+                       new-target-text
+                       (substring text target-end))
+             'utf-8
+             makefile.am)))
 
 (defun ut-format (str test-suite)
   "Scan the STR for %*% and replace with the hash value associated in TEST-SUITE."
