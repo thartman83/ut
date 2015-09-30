@@ -1,4 +1,4 @@
 AM_CPPFLAGS = -I$(top_builddir)/src
 
 bin_PROGRAMS = Foo
-Foo_SOURCES = \
+Foo_SOURCES = 
