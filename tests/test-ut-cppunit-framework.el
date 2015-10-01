@@ -125,10 +125,28 @@
 (ert-deftest ut-test-new-cppunit-test-suite ()
   (with-temporary-dir
    (ut-cppunit-setup-autotools-env default-directory "Foo")
-   (ut-conf-new "Foo" ".conf" "tests" 'cppunit)
-   (f-copy "../tests/cppunit-bar.hh" "src/bar.hh")
-   (f-copy "../tests/cppunit-bar.cc" "src/bar.cc")
-   ))
+   (let ((conf (ut-conf-new "Foo" ".conf" "tests" 'cppunit)))
+     (f-copy "../data/cppunit-bar.hh" "src/bar.hh")
+     (f-copy "../data/cppunit-bar.cc" "src/bar.cc")
+     (ut-new-test-suite conf "bar"
+                        (f-join (ut-conf-test-dir conf) "bar")
+                        'cppunit)
+     (ut-cppunit-setup-new-test-suite (ut-get-test-suite conf "bar") conf)
+     ;; Check to make sure that the bar test suite was added
+     ;; to test level`Makefile.am'
+     (should (not (s-match (f-read "tests/Makefile.am") "SUBDIRS =.* bar.*")))
+     ;; Check the new test suite folder and files exist
+     (should (f-directory? "tests/bar"))
+     (should (f-exists? "tests/bar/src/main.cc"))
+     (should (f-exists? "tests/bar/src/testBar.hh"))
+     (should (f-exists? "tests/bar/src/testBar.cc"))
+     (should (f-exists? "tests/bar/Makefile.am"))
+     (should (f-exists? "tests/bar/src/Makefile.am"))
+     ;; test autoreconf, configure and compile works
+     (should (= (call-process "autoreconf" nil nil nil "-i") 0))
+     (should (= (call-process (f-expand "./configure") nil nil nil) 0))
+     (cd "tests/bar/")
+     (should (= (call-process "make" nil nil nil) 0)))))
 
 (ert-deftest ut-test-setup-autotools-env ()
   (with-temporary-dir

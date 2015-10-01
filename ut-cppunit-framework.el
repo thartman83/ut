@@ -20,6 +20,7 @@
 ;;; Code:
 
 (require 'dash)
+(require 's)
 (require 'ut)
 (require 'ut-common-framework)
 
@@ -157,7 +158,7 @@
   (let ((test-suite-name (ut-test-suite-name test-suite))
         (test-suite-dir (f-join (ut-conf-project-dir conf)
                                 (ut-conf-test-dir conf)
-                                (ut-conf-test-suite-test-dir test-suite))))
+                                (ut-test-suite-test-dir test-suite))))
     (f-mkdir test-suite-dir)
     (mapc #'(lamdba (pair)
                     (ut-m4-expand-file "cppunit" (first pair) conf
@@ -165,42 +166,42 @@
                                                (ut-conf-test-dir conf)
                                                
                                                (second pair))))
-          '()))
-  
-  (let* ((name (ut-test-suite-name test-suite))
-         (dir (f-join (ut-conf-test-dir conf) (ut-test-suite-test-dir test-suite)))
-         (top-makefile.am-text
-          (ut-format (ut-format ut-cppunit-test-suite-top-makefile.am test-suite) conf))
-         (src-makefile.am-text
-          (ut-format (ut-format ut-cppunit-test-suite-src-makefile.am test-suite) conf))
-         (mainfile-text
-          (ut-format (ut-format ut-cppunit-test-suite-main.cc test-suite) conf))
-         (testheader-text
-          (ut-format (ut-format ut-cppunit-test-suite-header.hh test-suite) conf))
-         (testsource-text
-          (ut-format (ut-format ut-cppunit-test-suite-source.cc test-suite) conf))
-         (project-name (ut-project-name conf)))
-    ;; create test-suites directory structure
-    (ut-cppunit-create-test-suite-subdirs dir)
-    ;; create default build/autotools files
-    (atu-add-makefile.am-subdir (ut-test-suite-test-dir test-suite)
-                               (f-join (ut-conf-test-dir conf) "Makefile.am"))
-    (atu-add-ac-config-files (f-relative dir (ut-project-dir conf))
-                            (f-join (ut-project-dir conf) "configure.ac"))
-    (f-write-text top-makefile.am-text 'utf-8 (f-join dir "Makefile.am"))
-    (f-write-text src-makefile.am-text 'utf-8 (f-join dir "src/Makefile.am"))
-    ;; create default source and headers
-    (f-write-text (concat (ut-cppunit-cpp-header "main.cc" name project-name)
-                          mainfile-text)
-                  'utf-8 (f-join dir "src/main.cc"))
-    (f-write-text (concat (ut-cppunit-cpp-header
-                           (format "%sTests.hh" name) name project-name)
-                          testheader-text)
-                  'utf-8 (f-join dir (format "src/%sTests.hh" name)))
-    (f-write-text (concat (ut-cppunit-cpp-header
-                           (format "%sTests.cc" name) name project-name)
-                          testsource-text)
-                  'utf-8 (f-join dir (format "src/%sTests.cc" name)))))
+          '())))
+
+  ;; (let* ((name (ut-test-suite-name test-suite))
+  ;;        (dir (f-join (ut-conf-test-dir conf) (ut-test-suite-test-dir test-suite)))
+  ;;        (top-makefile.am-text
+  ;;         (ut-format (ut-format ut-cppunit-test-suite-top-makefile.am test-suite) conf))
+  ;;        (src-makefile.am-text
+  ;;         (ut-format (ut-format ut-cppunit-test-suite-src-makefile.am test-suite) conf))
+  ;;        (mainfile-text
+  ;;         (ut-format (ut-format ut-cppunit-test-suite-main.cc test-suite) conf))
+  ;;        (testheader-text
+  ;;         (ut-format (ut-format ut-cppunit-test-suite-header.hh test-suite) conf))
+  ;;        (testsource-text
+  ;;         (ut-format (ut-format ut-cppunit-test-suite-source.cc test-suite) conf))
+  ;;        (project-name (ut-project-name conf)))
+  ;;   ;; create test-suites directory structure
+  ;;   (ut-cppunit-create-test-suite-subdirs dir)
+  ;;   ;; create default build/autotools files
+  ;;   (atu-add-makefile.am-subdir (ut-test-suite-test-dir test-suite)
+  ;;                              (f-join (ut-conf-test-dir conf) "Makefile.am"))
+  ;;   (atu-add-ac-config-files (f-relative dir (ut-project-dir conf))
+  ;;                           (f-join (ut-project-dir conf) "configure.ac"))
+  ;;   (f-write-text top-makefile.am-text 'utf-8 (f-join dir "Makefile.am"))
+  ;;   (f-write-text src-makefile.am-text 'utf-8 (f-join dir "src/Makefile.am"))
+  ;;   ;; create default source and headers
+  ;;   (f-write-text (concat (ut-cppunit-cpp-header "main.cc" name project-name)
+  ;;                         mainfile-text)
+  ;;                 'utf-8 (f-join dir "src/main.cc"))
+  ;;   (f-write-text (concat (ut-cppunit-cpp-header
+  ;;                          (format "%sTests.hh" name) name project-name)
+  ;;                         testheader-text)
+  ;;                 'utf-8 (f-join dir (format "src/%sTests.hh" name)))
+  ;;   (f-write-text (concat (ut-cppunit-cpp-header
+  ;;                          (format "%sTests.cc" name) name project-name)
+  ;;                         testsource-text)
+  ;;                 'utf-8 (f-join dir (format "src/%sTests.cc" name))))
 
 (defun ut-cppunit-setup-new-test (conf test-name test-suite)
   "Using CONF, add TEST-NAME to TEST-SUITE."
