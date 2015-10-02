@@ -126,10 +126,9 @@
   (with-temporary-dir
    (ut-cppunit-setup-autotools-env default-directory "Foo")
    (let ((conf (ut-conf-new "Foo" ".conf" "tests" 'cppunit)))
-     (f-copy "../data/cppunit-bar.hh" "src/bar.hh")
-     (f-copy "../data/cppunit-bar.cc" "src/bar.cc")
-     (ut-new-test-suite conf "bar"
-                        (f-join (ut-conf-test-dir conf) "bar")
+     (f-copy (f-join ut--pkg-root "tests/data/cppunit-bar.hh") "src/bar.hh")
+     (f-copy (f-join ut--pkg-root "tests/data/cppunit-bar.cc") "src/bar.cc")
+     (ut-new-test-suite conf "bar" (f-join (ut-conf-test-dir conf) "bar")
                         'cppunit)
      (ut-cppunit-setup-new-test-suite (ut-get-test-suite conf "bar") conf)
      ;; Check to make sure that the bar test suite was added

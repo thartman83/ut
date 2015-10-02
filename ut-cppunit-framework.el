@@ -159,6 +159,7 @@
         (test-suite-dir (f-join (ut-conf-project-dir conf)
                                 (ut-conf-test-dir conf)
                                 (ut-test-suite-test-dir test-suite))))
+    ;; setup folder structure
     (f-mkdir test-suite-dir)
     (mapc #'(lamdba (pair)
                     (ut-m4-expand-file "cppunit" (first pair) conf
