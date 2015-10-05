@@ -373,6 +373,10 @@ with the configuration file."
   "Return the test directory associated with TEST-SUITE."
   (ht-get test-suite :test-dir))
 
+(defun ut-test-suite-src-dir (test-suite)
+  "Return the source directory associated with TEST-SUITE."
+  (ht-get test-suite :test-src-dir))
+
 (defun ut-test-suite-framework (test-suite)
   "Return the framework associated with TEST-SUITE."
   (ht-get test-suite :framework))
@@ -504,6 +508,8 @@ This function is not a predicate.  It will signal an error if it encounters
 something wrong.")
 
 ;; mutators
+(defun ut-test-suite-new)
+
 
 (defun ut-new-test-suite (conf name test-dir framework &optional build-process-fn
                                build-filter run-process-fn run-filter)
@@ -531,7 +537,7 @@ RUN-PROCESS-FN and RUN-FILTER, though they may be overriden."
                 (ut-framework-build-filter-hook framework)
               build-filter))
     (ht-set new-suite :run-process-fn (ut-framework-run-process-hook framework))
-    (ht-set new-suite :run-filtero-fn
+    (ht-set new-suite :run-filter-fn
             (if (null run-filter)
                 (ut-framework-run-filter-hook framework)
               run-filter))

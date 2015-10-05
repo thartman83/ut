@@ -136,11 +136,12 @@
      (should (not (s-match (f-read "tests/Makefile.am") "SUBDIRS =.* bar.*")))
      ;; Check the new test suite folder and files exist
      (should (f-directory? "tests/bar"))
+     (should (f-directory? "tests/bar/src"))
+     (should (f-exists? "tests/bar/Makefile.am"))
+     (should (f-exists? "tests/bar/src/Makefile.am"))
      (should (f-exists? "tests/bar/src/main.cc"))
      (should (f-exists? "tests/bar/src/testBar.hh"))
      (should (f-exists? "tests/bar/src/testBar.cc"))
-     (should (f-exists? "tests/bar/Makefile.am"))
-     (should (f-exists? "tests/bar/src/Makefile.am"))
      ;; test autoreconf, configure and compile works
      (should (= (call-process "autoreconf" nil nil nil "-i") 0))
      (should (= (call-process (f-expand "./configure") nil nil nil) 0))
