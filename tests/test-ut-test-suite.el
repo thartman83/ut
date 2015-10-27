@@ -40,6 +40,39 @@
      (should (equal (ut-test-suite-framework (ut-get-test-suite conf "bar"))
                     'mock)))))
 
+(ert-deftest test-ut-test-suite-new ()
+  (ut-define-mock-framework)
+  (with-temporary-dir
+   (make-directory "tests")
+   (let ((conf (ut-conf-new ".tests" "foo" "tests" 'mock)))
+     ;; Testing passing minimum arguments
+     (ut-test-suite-p conf (ut-test-suite-new conf "foo"))
+     (should (ut-test-suite-exists-p conf "foo"))
+     (should (eq (ut-test-suite-framework (ut-test-suite-get conf "foo")) 'mock))
+     (should (string= (ut-test-suite-test-dir (ut-test-suite-get conf "foo")) "foo"))
+     ;; Testing passing non-default test directory (relative)
+     (ut-test-suite-p conf (ut-test-suite-new conf "bar" "bogo"))
+     (should (ut-test-suite-exist-p conf "bar"))
+     (should (eq (ut-test-suite-framework (ut-test-suite-get conf "bar")) 'mock))
+     (should (string= (ut-test-suite-test-dir (ut-test-suite-get conf "bar")) "bogo"))
+     ;; Test passing non-default test directory (absolute)
+     (ut-test-suite-p conf
+                      (ut-test-suite-new conf "baz" (f-join (ut-conf-project-dir conf)
+                                                            (ut-conf-test-dir conf)
+                                                            "blarg")))
+     (should (ut-test-suite-exists-p conf "baz"))
+     (should (eq (ut-test-suite-framework (ut-test-suite-get conf "baz")) 'mock))
+     (should (string= (ut-test-suite-test-dir (ut-test-suite-get conf "baz")) "blarg"))
+     ;; Test passing bad absolute path
+     (should-error (ut-test-suite-new conf "bob" "/this/path/goes/nowhere/")
+                   "Test suite `/this/path/goes/nowhere/' must either be a relative path or an absolute path with root testing dir as an ancestor")
+     ;; Test passing a non-ancestory path
+     (should-error (ut-test-suite-new conf "bob" (f-join (ut-conf-project-dir conf) "bob"))
+                   (format "Test suite `%s' must either be a relative path or an absolute path with the root testing dir as an ancestor" (f-join (ut-conf-project-dir conf) "bob")))
+     ;; Test passing in a non-existant framework
+     (should-error (ut-test-suite-new conf "bob" "bob" 'someotherframework)
+                   "Unknown framework `someotherframework'"))))
+
 (ert-deftest test-ut-adding-and-deleting-suites ()
   (ut-define-mock-framework)
   (with-temporary-dir

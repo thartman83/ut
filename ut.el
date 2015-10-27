@@ -485,6 +485,12 @@ If all tests pass within TEST-SUITE, the summary result is 'passed."
     (error "Test suite '%s' does not exist" name))
   (ht-get (ut-test-suites conf) name))
 
+(defun ut-test-suite-get (conf name)
+  "Return test suite from CONF with NAME."
+  (when (not (ut-test-suite-exists-p conf name))
+    (error "Test suite '%s' does not exist" name))
+  (ht-get (ut-test-suites conf) name))
+
 ;; predicates
 
 (defun ut-test-suite-exists-p (conf name)
@@ -508,8 +514,27 @@ This function is not a predicate.  It will signal an error if it encounters
 something wrong.")
 
 ;; mutators
-(defun ut-test-suite-new)
-
+(defun ut-test-suite-new (conf name &optional dir framework)
+  "Create a new test suite in CONF called NAME using DIR and FRAMEWORK."
+  (when (null framework)
+    (setf framework (ut-conf-framework conf)))
+  (when (not (ut-frameworkp framework))
+    (error "Unknown framework `%s'" framework))
+  (when (ut-test-suite-exists-p conf name)
+    (error "Test suite `%s' already exists" name))
+  (let* ((base-test-dir (f-join (ut-conf-project-dir conf) (ut-conf-test-dir conf)))
+         (test-suite-dir (cond
+                          ((null dir) (f-join base-test-dir name))
+                          ((f-ancestor-of? base-test-dir dir) dir)
+                          ((f-relative? dir) (f-join base-test-dir dir))
+                          (t (error "Test suite directory `%s' must either be a relative path or an absolute path with the root testing dir as an ancestor" dir))))
+         (ts (ht (:test-suite-name name)
+                 (:test-suite-dir (f-relative test-suite-dir base-test-dir))
+                 (:framework framework))))
+    (f-mkdir test-suite-dir)
+    (run-hook-with-args (ut-framework-new-test-suite-hook framework) conf ts)
+    (ht-set! (ut-test-suites conf) name ts)
+    ts))
 
 (defun ut-new-test-suite (conf name test-dir framework &optional build-process-fn
                                build-filter run-process-fn run-filter)
