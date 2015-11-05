@@ -315,7 +315,7 @@ the configuration into CONF-FILE.  TEST-DIR is a sub folder from
 the root project director.  FRAMEWORK is the name of the unit
 testing software that will be used to run the test."
   (let ((conf (ht (:project-name project-name)
-                  (:project-dir (f-dirname conf-file))
+                  (:project-dir (f-long (f-dirname conf-file)))
                   (:test-dir test-dir)
                   (:framework framework)
                   (:test-suites (ht)))))
@@ -330,7 +330,7 @@ testing software that will be used to run the test."
 (defun ut-conf-parse (test-conf-file)
   "Parse the TEST-CONF-FILE into a plist."
   (let ((new-conf (read (f-read-text test-conf-file 'utf-8))))
-    (ht-set! new-conf :project-dir (f-dirname (f-expand test-conf-file)))
+    (ht-set! new-conf :project-dir (f-long (f-dirname test-conf-file)))
     (unless (ut-conf-p new-conf)
       (error "'%s' does not specify a valid unit testing configuration"
              test-conf-file))
@@ -367,11 +367,11 @@ with the configuration file."
 
 (defun ut-test-suite-name (test-suite)
   "Return the name associated with TEST-SUITE."
-  (ht-get test-suite :test-name))
+  (ht-get test-suite :test-suite-name))
 
 (defun ut-test-suite-test-dir (test-suite)
   "Return the test directory associated with TEST-SUITE."
-  (ht-get test-suite :test-dir))
+  (ht-get test-suite :test-suite-dir))
 
 (defun ut-test-suite-src-dir (test-suite)
   "Return the source directory associated with TEST-SUITE."
@@ -536,41 +536,41 @@ something wrong.")
     (ht-set! (ut-test-suites conf) name ts)
     ts))
 
-(defun ut-new-test-suite (conf name test-dir framework &optional build-process-fn
-                               build-filter run-process-fn run-filter)
-  "Create new test suite in CONF with NAME.
+;; (defun ut-new-test-suite (conf name test-dir framework &optional build-process-fn
+;;                                build-filter run-process-fn run-filter)
+;;   "Create new test suite in CONF with NAME.
 
-TEST-DIR as the path to the test files.
-FRAMEWORK defines the default values for BUILD-PROCESS-FN, BUILD-FILTER,
-RUN-PROCESS-FN and RUN-FILTER, though they may be overriden."
-  (when (ut-test-suite-exists-p conf name)
-    (error "Test suite '%s' already exists" name))
-  (when (not (memq framework ut-frameworks))
-    (error "Unknown framework '%s'" framework))
-  (when (not (or (f-relative? test-dir)
-                 (f-ancestor-of? (ut-conf-test-dir conf) test-dir)))
-    (error "TEST-DIR must be a relative directory or an absolute path as a
- direct ancestor of the projects test root"))
-  (if (not (f-exists? test-dir))
-      (make-directory test-dir))
-  (let ((new-suite (ht (:test-name name)
-                       (:test-dir (f-relative test-dir (ut-conf-test-dir conf)))
-                       (:framework framework))))
-    (ht-set new-suite :build-process-fn (ut-framework-build-process-hook framework))
-    (ht-set new-suite :build-filter-fn
-            (if (null build-filter)
-                (ut-framework-build-filter-hook framework)
-              build-filter))
-    (ht-set new-suite :run-process-fn (ut-framework-run-process-hook framework))
-    (ht-set new-suite :run-filter-fn
-            (if (null run-filter)
-                (ut-framework-run-filter-hook framework)
-              run-filter))
-    (when (not (null (ut-framework-new-test-suite-hook framework)))
-      (run-hook-with-args (ut-framework-new-test-suite-hook framework)
-                          new-suite conf))
-    (ht-set (ut-test-suites conf) name new-suite)
-    new-suite))
+;; TEST-DIR as the path to the test files.
+;; FRAMEWORK defines the default values for BUILD-PROCESS-FN, BUILD-FILTER,
+;; RUN-PROCESS-FN and RUN-FILTER, though they may be overriden."
+;;   (when (ut-test-suite-exists-p conf name)
+;;     (error "Test suite '%s' already exists" name))
+;;   (when (not (memq framework ut-frameworks))
+;;     (error "Unknown framework '%s'" framework))
+;;   (when (not (or (f-relative? test-dir)
+;;                  (f-ancestor-of? (ut-conf-test-dir conf) test-dir)))
+;;     (error "TEST-DIR must be a relative directory or an absolute path as a
+;;  direct ancestor of the projects test root"))
+;;   (if (not (f-exists? test-dir))
+;;       (make-directory test-dir))
+;;   (let ((new-suite (ht (:test-name name)
+;;                        (:test-dir (f-relative test-dir (ut-conf-test-dir conf)))
+;;                        (:framework framework))))
+;;     (ht-set new-suite :build-process-fn (ut-framework-build-process-hook framework))
+;;     (ht-set new-suite :build-filter-fn
+;;             (if (null build-filter)
+;;                 (ut-framework-build-filter-hook framework)
+;;               build-filter))
+;;     (ht-set new-suite :run-process-fn (ut-framework-run-process-hook framework))
+;;     (ht-set new-suite :run-filter-fn
+;;             (if (null run-filter)
+;;                 (ut-framework-run-filter-hook framework)
+;;               run-filter))
+;;     (when (not (null (ut-framework-new-test-suite-hook framework)))
+;;       (run-hook-with-args (ut-framework-new-test-suite-hook framework)
+;;                           new-suite conf))
+;;     (ht-set (ut-test-suites conf) name new-suite)
+;;     new-suite))
 
 (defun ut-del-test-suite (conf name)
   "Remove from CONF test suite NAME from the list of test suites."

@@ -23,22 +23,22 @@
 
 ;; test test-suite addition and removal functions
 
-(ert-deftest test-ut-new-test-suite ()
-  "Test creating a new test suite."
-  (ut-define-mock-framework)
-  (with-temporary-dir
-   (make-directory "tests")
-   (let ((conf (ut-conf-new ".tests" "foo" "tests" 'mock)))
-     (should (= (ut-conf-test-suite-count conf) 0))
-     (ut-new-test-suite conf "bar" "tests/bar" 'mock)
-     (should (ut-test-suite-p conf (ut-get-test-suite conf "bar")))
-     (should (= (ut-conf-test-suite-count conf) 1))
-     (should (ut-test-suite-exists-p conf "bar"))
-     (should (string= (f-join (ut-conf-test-dir conf)
-                              (ut-test-suite-test-dir (ut-get-test-suite conf "bar")))
-                      "tests/bar"))
-     (should (equal (ut-test-suite-framework (ut-get-test-suite conf "bar"))
-                    'mock)))))
+;; (ert-deftest test-ut-new-test-suite ()
+;;   "Test creating a new test suite."
+;;   (ut-define-mock-framework)
+;;   (with-temporary-dir
+;;    (make-directory "tests")
+;;    (let ((conf (ut-conf-new ".tests" "foo" "tests" 'mock)))
+;;      (should (= (ut-conf-test-suite-count conf) 0))
+;;      (ut-new-test-suite conf "bar" "tests/bar" 'mock)
+;;      (should (ut-test-suite-p conf (ut-get-test-suite conf "bar")))
+;;      (should (= (ut-conf-test-suite-count conf) 1))
+;;      (should (ut-test-suite-exists-p conf "bar"))
+;;      (should (string= (f-join (ut-conf-test-dir conf)
+;;                               (ut-test-suite-test-dir (ut-get-test-suite conf "bar")))
+;;                       "tests/bar"))
+;;      (should (equal (ut-test-suite-framework (ut-get-test-suite conf "bar"))
+;;                     'mock)))))
 
 (ert-deftest test-ut-test-suite-new ()
   (ut-define-mock-framework)
@@ -52,7 +52,7 @@
      (should (string= (ut-test-suite-test-dir (ut-test-suite-get conf "foo")) "foo"))
      ;; Testing passing non-default test directory (relative)
      (ut-test-suite-p conf (ut-test-suite-new conf "bar" "bogo"))
-     (should (ut-test-suite-exist-p conf "bar"))
+     (should (ut-test-suite-exists-p conf "bar"))
      (should (eq (ut-test-suite-framework (ut-test-suite-get conf "bar")) 'mock))
      (should (string= (ut-test-suite-test-dir (ut-test-suite-get conf "bar")) "bogo"))
      ;; Test passing non-default test directory (absolute)
@@ -65,7 +65,7 @@
      (should (string= (ut-test-suite-test-dir (ut-test-suite-get conf "baz")) "blarg"))
      ;; Test passing bad absolute path
      (should-error (ut-test-suite-new conf "bob" "/this/path/goes/nowhere/")
-                   "Test suite `/this/path/goes/nowhere/' must either be a relative path or an absolute path with root testing dir as an ancestor")
+                   "Test suite directory `/this/path/goes/nowhere/' must either be a relative path or an absolute path with the root testing dir as an ancestor")
      ;; Test passing a non-ancestory path
      (should-error (ut-test-suite-new conf "bob" (f-join (ut-conf-project-dir conf) "bob"))
                    (format "Test suite `%s' must either be a relative path or an absolute path with the root testing dir as an ancestor" (f-join (ut-conf-project-dir conf) "bob")))
