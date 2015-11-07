@@ -18,6 +18,7 @@
 ;;; Code:
 
 (require 'test-helpers)
+(require 's)
 (require 'ut)
 (require 'ut-mock-framework)
 
@@ -50,11 +51,13 @@
      (should (ut-test-suite-exists-p conf "foo"))
      (should (eq (ut-test-suite-framework (ut-test-suite-get conf "foo")) 'mock))
      (should (string= (ut-test-suite-test-dir (ut-test-suite-get conf "foo")) "foo"))
+     (should (string= (ut-test-suite-src-dir (ut-test-suite-get conf "foo")) "."))
      ;; Testing passing non-default test directory (relative)
      (ut-test-suite-p conf (ut-test-suite-new conf "bar" "bogo"))
      (should (ut-test-suite-exists-p conf "bar"))
      (should (eq (ut-test-suite-framework (ut-test-suite-get conf "bar")) 'mock))
      (should (string= (ut-test-suite-test-dir (ut-test-suite-get conf "bar")) "bogo"))
+     (should (string= (ut-test-suite-src-dir (ut-test-suite-get conf "bar")) "."))
      ;; Test passing non-default test directory (absolute)
      (ut-test-suite-p conf
                       (ut-test-suite-new conf "baz" (f-join (ut-conf-project-dir conf)
@@ -65,13 +68,28 @@
      (should (string= (ut-test-suite-test-dir (ut-test-suite-get conf "baz")) "blarg"))
      ;; Test passing bad absolute path
      (should-error (ut-test-suite-new conf "bob" "/this/path/goes/nowhere/")
-                   "Test suite directory `/this/path/goes/nowhere/' must either be a relative path or an absolute path with the root testing dir as an ancestor")
-     ;; Test passing a non-ancestory path
-     (should-error (ut-test-suite-new conf "bob" (f-join (ut-conf-project-dir conf) "bob"))
-                   (format "Test suite `%s' must either be a relative path or an absolute path with the root testing dir as an ancestor" (f-join (ut-conf-project-dir conf) "bob")))
+                   (s-concat "Test suite directory `/this/path/goes/nowhere/'"
+                            " must either be a relative path or an absolute path"
+                            " with the root testing dir as an ancestor"))
+     ;; Test passing a non-ancestory test-dir path
+     (should-error (ut-test-suite-new conf "bob" (f-join (ut-conf-project-dir conf)
+                                                         "bob"))
+                   (format (s-concat "Test suite directory `%s' must either be a "
+                                     "relative path or an absolute path with the "
+                                     "root testing dir as an ancestor")
+                           (f-join (ut-conf-project-dir conf) "bob")))
      ;; Test passing in a non-existant framework
      (should-error (ut-test-suite-new conf "bob" "bob" 'someotherframework)
-                   "Unknown framework `someotherframework'"))))
+                   "Unknown framework `someotherframework'")
+     ;; Test passing a bad absolute src-dir path
+     (should-error (ut-test-suite-new conf "bob" "bob" 'mock "/some/path")
+                   (s-concat "Test suite src directory `/some/path' must either be a "
+                             "relative path or an absolute path with the test "
+                             "suite test directory as an ancestor"))
+     ;; Test passing a relative path
+     (should (string= (ut-test-suite-src-dir (ut-test-suite-new conf "bob" "bob"
+                                                                'mock "src"))
+                      "src")))))
 
 (ert-deftest test-ut-adding-and-deleting-suites ()
   (ut-define-mock-framework)
@@ -79,7 +97,7 @@
    (make-directory "tests")
    (let ((conf (ut-conf-new ".tests" "foo" "tests" 'mock)))
      (should (= (ut-conf-test-suite-count conf) 0))
-     (ut-new-test-suite conf "foo" "tests/foo" 'mock)
+     (ut-test-suite-new conf "foo" "tests/foo" 'mock)
      (should (= (ut-conf-test-suite-count conf) 1))
      (ut-del-test-suite conf "foo")
      (should (= (ut-conf-test-suite-count conf) 0)))))
@@ -92,12 +110,12 @@
    (let ((conf (ut-conf-new "foo" ".tests" "tests" 'mock)))
      (should (= (ut-conf-test-suite-count conf) 0))
      (should-error (ut-del-test-suite conf "foo")
-                   "Test suite 'foo' does not exist")
-     (ut-new-test-suite conf "foo" "tests/foo" 'mock)
-     (should-error (ut-new-test-suite conf "foo" "tests/foo" 'mock)
-                   "Test suite 'foo' already exists")
+                   "Test suite `foo' does not exist")
+     (ut-test-suite-new conf "foo" "tests/foo" 'mock)
+     (should-error (ut-test-suite-new conf "foo" "tests/foo" 'mock)
+                   "Test suite `foo' already exists")
      (should-error (ut-del-test-suite conf "bar")
-                   "Test suite 'bar' does not exist"))
+                   "Test suite `bar' does not exist"))
    (pop ut-frameworks)))
 
 (ert-deftest test-ut-get-test-suite ()
@@ -105,9 +123,9 @@
   (with-temporary-dir
    (make-directory "tests")
    (let ((conf (ut-conf-new "foo" ".tests" "tests" 'mock)))
-     (let ((suite (ut-new-test-suite conf "foo" "tests/foo" 'mock)))
+     (let ((suite (ut-test-suite-new conf "foo" "tests/foo" 'mock)))
        (should (not (null (ut-get-test-suite conf "foo")))))
-     (let ((suite (ut-new-test-suite conf "bar" "tests/bar" 'mock)))
+     (let ((suite (ut-test-suite-new conf "bar" "tests/bar" 'mock)))
        (should (equal (ut-get-test-suite conf "bar") suite)))
      (should-error (ut-get-test-suite conf "baz")
                    "Test suite 'baz' does not exist"))))

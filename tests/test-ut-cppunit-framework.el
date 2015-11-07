@@ -128,9 +128,9 @@
    (let ((conf (ut-conf-new "Foo" ".conf" "tests" 'cppunit)))
      (f-copy (f-join ut--pkg-root "tests/data/cppunit-bar.hh") "src/bar.hh")
      (f-copy (f-join ut--pkg-root "tests/data/cppunit-bar.cc") "src/bar.cc")
-     (ut-new-test-suite conf "bar" (f-join (ut-conf-test-dir conf) "bar")
-                        'cppunit)
-     (ut-cppunit-setup-new-test-suite (ut-get-test-suite conf "bar") conf)
+     ; the call to cppunit-setup-new-test-suite should be a side effect here
+     (ut-test-suite-new conf "bar" (f-join (ut-conf-test-dir conf) "bar")
+                        'cppunit "src")
      ;; Check to make sure that the bar test suite was added
      ;; to test level`Makefile.am'
      (should (not (s-match (f-read "tests/Makefile.am") "SUBDIRS =.* bar.*")))

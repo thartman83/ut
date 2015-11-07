@@ -153,33 +153,35 @@
   (f-join (ut-test-suite-test-dir suite)
           (format "src/%sTests.cc" (ut-test-suite-name suite))))
 
-(defun ut-cppunit-setup-new-test-suite (test-suite conf)
-  "Setup a new TEST-SUITE for CONF."
+(defun ut-cppunit-setup-new-test-suite (conf test-suite)
+  "CONF TEST-SUITE, TODO DOC."
   (let* ((test-suite-name (ut-test-suite-name test-suite))
          (test-suite-dir (f-join (ut-conf-project-dir conf)
                                  (ut-conf-test-dir conf)
                                  (ut-test-suite-test-dir test-suite)))
-         (test-suite-src-dir (f-join test-suite-dir (ut-test-suite-src-dir test-suite))))
+         (test-suite-src-dir (f-join test-suite-dir (ut-test-suite-src-dir
+                                                     test-suite))))
     ;; setup folder structure
     (f-mkdir test-suite-dir)
     (f-mkdir test-suite-src-dir)
     ;; setup default files
-    (mapc #'(lamdba (pair)
+    (mapc #'(lambda (pair)
                     (ut-m4-expand-file "cppunit" (car pair) conf
                                        (f-join (ut-conf-project-dir conf)
                                                (ut-conf-test-dir conf)
                                                (cdr pair))))
-          '(("ut-cppunit-test-suite-top-makefile_am.m4" .
-             "Makefile.am")
-            ("ut-cppunit-test-suite-src-makefile_am.m4" .
-             (f-join test-suite-src-dir "Makefile.am"))
-            ("ut-cppunit-test-suite-main_cc.m4" .
-             (f-join tests-suite-src-dir "main.cc"))
-            ("ut-cppunit-test-suite-header_hh.m4" .
-             (f-join test-suite-src-dir (format "test%s.hh"
+          `(("ut-cppunit-test-suite-top-makefile_am.m4" .
+            "Makefile.am")
+           ("ut-cppunit-test-suite-src-makefile_am.m4" .
+            ,(f-join test-suite-src-dir "Makefile.am"))
+           ("ut-cppunit-test-suite-main_cc.m4" .
+            ,(f-join test-suite-src-dir "main.cc"))
+           ("ut-cppunit-test-suite-header_hh.m4" .
+            ,(f-join test-suite-src-dir (format "test%s.hh"
                                                 (capitalize test-suite-name))))
-            ("ut-cppunit-test-suite-source_cc.m4" .
-             (f-join test-suite-src-dir (format "test%s.hh" (capitalize test-suite-name))))))
+           ("ut-cppunit-test-suite-source_cc.m4" .
+            ,(f-join test-suite-src-dir (format "test%s.hh"
+                                                (capitalize test-suite-name))))))
     ))
 
   ;; (let* ((name (ut-test-suite-name test-suite))

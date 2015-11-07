@@ -215,10 +215,12 @@ DESTINATION follows the same rules as the destination keyword in
   (let* ((defines
           (s-join " " (ht-map #'(lambda (key val)
                                   (format "-D%s=%s"
-                                          (s-replace "-" "_" (subseq (symbol-name key) 1)) val))
+                                          (s-replace "-" "_" (subseq (symbol-name key)
+                                                                     1)) val))
                               defines)))
          (m4-file (f-join ut-m4-dir framework-name file))
-         (m4-output (shell-command-to-string (s-join " " (list "m4" defines m4-file)))))
+         (m4-output (shell-command-to-string (s-join " "
+                                                     (list "m4" defines m4-file)))))
     (if (stringp destination)
         (f-write m4-output 'utf-8 destination)
       (when destination
