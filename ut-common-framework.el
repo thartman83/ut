@@ -186,52 +186,29 @@
   "Return the line number of POS within FILE."
   (line-by-pos pos (f-read file)))
 
-(defun ut-m4-expand-text (text defines &optional destination)
-  "Expand m4 TEXT.
+(defun ut-m4-expand-file (infile outfile defines)
+  "Expand text in INFILE and write the result to OUTFILE using rules in DEFINES."
+  (f-write-text (ut-m4-expand-text (f-read-text infile) defines) 'utf-8 outfile))
 
-Pass key value pairs in DEFINES as -D[KEY]=[VALUE] arguments to m4.
-DESTINATION follows the same rules as the destination keyword in
-`call-process-region'."
+(defun ut-m4-expand-text (text defines)
+  "Expand and return m4 TEXT using the replacement rules in DEFINES."
   (with-temp-buffer
-    (kill-region (point-min) (point-max))
-    (insert text)
-    (let ((define-list
-            (ht-map #'(lambda (key val)
-                       (format "-D%s=%s"
-                               (s-replace "-" "_" (subseq (symbol-name key) 1)) val))
-                   defines)))
-      (apply #'call-process-region
-             (append (list (point-min) (point-max) "m4" t destination t)
-                     define-list (list "-"))))))
+    (let* ((tmp-file (make-temp-file "utm4-"))
+           (d-args (ut--ht-to-d-args defines))
+           (res))
+      (f-write-text text 'utf-8 tmp-file)
+      (setf res (apply #'call-process (append (list "m4" tmp-file t nil) d-args (list "-"))))
+      (when (not (= res 0))
+        (error "An error occured while calling `%s'"
+               (s-join " " (append (list "m4" tmp-file) d-args))))
+      (buffer-substring (point-min) (point-max)))))
 
-;; (defun ut-m4-expand-file (framework-name file defines &optional destination)
-;;   "Expand FRAMEWORK-NAME/FILE.
-;; Pass DEFINES and DESTINATION to ut-m4-expand-text."
-;;   (ut-m4-expand-text (f-read-text (f-join ut-m4-dir framework-name file))
-;;                      defines destination))
-
-(defun ut-m4-expand-file (framework-name file defines destination)
-  "Expands FRAMEWORK-NAME/FILE with DEFINES to DESTINATION."
-  (let* ((defines
-          (s-join " " (ht-map #'(lambda (key val)
-                                  (format "-D%s=%s"
-                                          (s-replace "-" "_" (subseq (symbol-name key)
-                                                                     1)) val))
-                              defines)))
-         (m4-file (f-join ut-m4-dir framework-name file))
-         (m4-output (shell-command-to-string (s-join " "
-                                                     (list "m4" defines m4-file)))))
-    (if (stringp destination)
-        (f-write m4-output 'utf-8 destination)
-      (when destination
-        m4-output))))
-
-;; (defun line-by-pos-split (pos text)
-;;   "Return the line number of POS in text."
-;;   (if (or (= pos 0) (null text))
-;;       1
-;;     (+ (if (string= (car text-list) "\n") 1 0)
-;;        (line-by-pos-split (1- pos) (cdr text-list)))))
+(defun ut--ht-to-d-args (tbl)
+  "Return a string in the form of -D[KEY]=[VALUE] based on the hash values in TBL."
+  (ht-map #'(lambda (key val)
+              (format "-D%s=%s"
+                      (s-replace "-" "_" (subseq (symbol-name key)
+                                                 1)) val)) tbl))
 
 (defun line-by-pos (pos text)
   "Return the line number of POS in TEXT."

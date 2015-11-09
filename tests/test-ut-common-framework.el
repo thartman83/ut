@@ -18,6 +18,7 @@
 ;; Define a testing framework for the cppunit testing
 
 ;;; Code:
+(require 'dash)
 
 (ert-deftest test-line-by-pos ()
   "Test line-by-pos."
@@ -83,6 +84,21 @@
                       (s-concat "bin_PROGRAMS = foo\n"
                                 "foo_SOURCES = thisisanextremelylongfilename.cc \\\n"
                                 "thisisalsoanextremelylongfilename.cc \nfoo_LDADD = libfoo.la")))))
+
+(ert-deftest test-ut-m4-expand-text ()
+  (should (s-equals? (ut-m4-expand-text "foo=bar" (ht (:foo "baz") (:bar "bob")))
+                     "baz=bob")))
+
+(ert-deftest test-ut-m4-expand-file ()
+  (with-temporary-dir
+   (f-write-text "foo=bar" 'utf-8 "foo.txt")
+   (ut-m4-expand-file "foo.txt" "baz.txt" (ht (:foo "baz") (:bar "bob")))
+   (should (s-equals? (f-read-text "baz.txt") "baz=bob"))))
+
+(ert-deftest test-ut--ht-d-args ()
+  (let ((-compare-fn #'s-equals?))
+    (should (and (-contains? (ut--ht-to-d-args (ht (:foo "bar") (:bar "baz"))) "-Dfoo=bar")
+                 (-contains? (ut--ht-to-d-args (ht (:foo "bar") (:bar "baz"))) "-Dbar=baz")))))
 
 (provide 'test-ut-common-framework)
 ;;; test-ut-common-framework.el ends here
