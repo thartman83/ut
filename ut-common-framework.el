@@ -23,6 +23,7 @@
 (require 'f)
 (require 'ht)
 (require 'dash)
+(require 'ut)
 
 (defcustom ut-email "EmaNymton@example.com"
   "Personal e-mail address information for user."
@@ -54,7 +55,7 @@
 (defun ut-get-copyright ()
   "Return the expanded copyright text."
   (with-temp-buffer
-    (ut-m4-expand-text "common" ut-default-copyright
+    (ut-m4-expand-text (f-join ut--pkg-root "m4" "common" ut-default-copyright)
                   (ht (:ut-full-name ut-full-name)
                       (:ut-email ut-email)))
     (buffer-substring (point-min) (point-max))))
@@ -197,7 +198,8 @@
            (d-args (ut--ht-to-d-args defines))
            (res))
       (f-write-text text 'utf-8 tmp-file)
-      (setf res (apply #'call-process (append (list "m4" tmp-file t nil) d-args (list "-"))))
+      (setf res (apply #'call-process (append (list "m4" tmp-file t nil) d-args
+                                              (list "-"))))
       (when (not (= res 0))
         (error "An error occured while calling `%s'"
                (s-join " " (append (list "m4" tmp-file) d-args))))

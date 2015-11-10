@@ -129,10 +129,13 @@ Code somewhat pilfered from test-helper.el from flycheck
 
 Compare the output of FRAMEWORK-NAME/M4-FILE using DEFINES to EXPECTED-OUTPUT.
 If INCLUDEPATHS is non-nil pass it to ut-m4-expand."
-  `(ert-deftest ,test-name ()
-     (should (string= (ut-m4-expand-file ,framework-name ,m4-file ,defines t)
-                      (f-read-text (f-join ut--pkg-root "tests/data"
-                                           ,expected-output))))))
+  (let ((outfile (make-temp-file "utm4cpp-")))
+    `(ert-deftest ,test-name ()
+       (ut-m4-expand-file ,(f-join ut--pkg-root "m4" framework-name
+                                   (eval m4-file)) ,outfile ,defines)
+       (should (string= (f-read-text ,outfile)
+                        (f-read-text (f-join ut--pkg-root "tests/data"
+                                             ,expected-output)))))))
 
 (provide 'test-helpers)
 

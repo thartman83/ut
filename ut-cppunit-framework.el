@@ -166,21 +166,22 @@
     (f-mkdir test-suite-src-dir)
     ;; setup default files
     (mapc #'(lambda (pair)
-                    (ut-m4-expand-file "cppunit" (car pair) conf
-                                       (f-join (ut-conf-project-dir conf)
-                                               (ut-conf-test-dir conf)
-                                               (cdr pair))))
+              (ut-m4-expand-file (f-join ut--pkg-root "m4" "cppunit" (car pair))
+                                 (f-join (ut-conf-project-dir conf)
+                                         (ut-conf-test-dir conf)
+                                         (cdr pair))
+                                 conf))
           `(("ut-cppunit-test-suite-top-makefile_am.m4" .
-            "Makefile.am")
-           ("ut-cppunit-test-suite-src-makefile_am.m4" .
-            ,(f-join test-suite-src-dir "Makefile.am"))
-           ("ut-cppunit-test-suite-main_cc.m4" .
-            ,(f-join test-suite-src-dir "main.cc"))
-           ("ut-cppunit-test-suite-header_hh.m4" .
-            ,(f-join test-suite-src-dir (format "test%s.hh"
-                                                (capitalize test-suite-name))))
-           ("ut-cppunit-test-suite-source_cc.m4" .
-            ,(f-join test-suite-src-dir (format "test%s.hh"
+             "Makefile.am")
+            ("ut-cppunit-test-suite-src-makefile_am.m4" .
+             ,(f-join test-suite-src-dir "Makefile.am"))
+            ("ut-cppunit-test-suite-main_cc.m4" .
+             ,(f-join test-suite-src-dir "main.cc"))
+            ("ut-cppunit-test-suite-header_hh.m4" .
+             ,(f-join test-suite-src-dir (format "test%s.hh"
+                                                 (capitalize test-suite-name))))
+            ("ut-cppunit-test-suite-source_cc.m4" .
+             ,(f-join test-suite-src-dir (format "test%s.hh"
                                                 (capitalize test-suite-name))))))
     ))
 
@@ -316,16 +317,21 @@ FILE-NAME, TEST-NAME and PROJECT-NAME are passed to copyright."
                           *ut-cppunit-autotool-touch-files*))
   (mapc #'f-mkdir (mapcar #'(lambda (p) (f-join dir p))
                           *ut-cppunit-directories*))
-  (ut-m4-expand-file "cppunit" ut-cppunit-configure.ac
-                     (ht (:project-name project-name))
-                     (f-join dir "configure.ac"))
-  (ut-m4-expand-file "cppunit" "ut-cppunit-test-suite-top-makefile_am.m4"
-                     (ht) (f-join dir "Makefile.am"))
-  (ut-m4-expand-file "cppunit" "ut-cppunit-test-suite-src-makefile_am.m4"
-                     (ht (:project-name project-name))
-                     (f-join "src/Makefile.am"))
-  (ut-m4-expand-file "cppunit" "ut-cppunit-test-suite-makefile_am.m4"
-                     (ht) (f-join "tests/Makefile.am")))
+  (ut-m4-expand-file (f-join ut--pkg-root "m4" "cppunit" ut-cppunit-configure.ac)
+                     (f-join dir "configure.ac")
+                     (ht (:project-name project-name)))
+  (ut-m4-expand-file (f-join ut--pkg-root "m4" "cppunit"
+                             ut-cppunit-test-suite-top-makefile.am)
+                     (f-join dir "Makefile.am")
+                     (ht))
+  (ut-m4-expand-file (f-join ut--pkg-root "m4" "cppunit"
+                             ut-cppunit-test-suite-src-makefile.am)
+                     (f-join "src/Makefile.am")
+                     (ht (:project-name project-name)))
+  (ut-m4-expand-file (f-join ut--pkg-root "m4" "cppunit"
+                             ut-cppunit-tests-makefile.am)
+                     (f-join "tests/Makefile.am")
+                     (ht)))
 
 (defun ut-new-cppunit-project (project-dir project-name)
   "Create a barebones cppunit PROJECT-DIR for PROJECT-NAME."
