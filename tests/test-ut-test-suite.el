@@ -24,23 +24,6 @@
 
 ;; test test-suite addition and removal functions
 
-;; (ert-deftest test-ut-new-test-suite ()
-;;   "Test creating a new test suite."
-;;   (ut-define-mock-framework)
-;;   (with-temporary-dir
-;;    (make-directory "tests")
-;;    (let ((conf (ut-conf-new ".tests" "foo" "tests" 'mock)))
-;;      (should (= (ut-conf-test-suite-count conf) 0))
-;;      (ut-new-test-suite conf "bar" "tests/bar" 'mock)
-;;      (should (ut-test-suite-p conf (ut-get-test-suite conf "bar")))
-;;      (should (= (ut-conf-test-suite-count conf) 1))
-;;      (should (ut-test-suite-exists-p conf "bar"))
-;;      (should (string= (f-join (ut-conf-test-dir conf)
-;;                               (ut-test-suite-test-dir (ut-get-test-suite conf "bar")))
-;;                       "tests/bar"))
-;;      (should (equal (ut-test-suite-framework (ut-get-test-suite conf "bar"))
-;;                     'mock)))))
-
 (ert-deftest test-ut-test-suite-new ()
   (ut-define-mock-framework)
   (with-temporary-dir
@@ -59,10 +42,9 @@
      (should (string= (ut-test-suite-test-dir (ut-test-suite-get conf "bar")) "bogo"))
      (should (string= (ut-test-suite-src-dir (ut-test-suite-get conf "bar")) "."))
      ;; Test passing non-default test directory (absolute)
-     (ut-test-suite-p conf
-                      (ut-test-suite-new conf "baz" (f-join (ut-conf-project-dir conf)
-                                                            (ut-conf-test-dir conf)
-                                                            "blarg")))
+     (ut-test-suite-p conf (ut-test-suite-new conf "baz"
+                                              (f-join (ut-conf-test-dir conf)
+                                                      "blarg")))
      (should (ut-test-suite-exists-p conf "baz"))
      (should (eq (ut-test-suite-framework (ut-test-suite-get conf "baz")) 'mock))
      (should (string= (ut-test-suite-test-dir (ut-test-suite-get conf "baz")) "blarg"))
@@ -118,16 +100,16 @@
                    "Test suite `bar' does not exist"))
    (pop ut-frameworks)))
 
-(ert-deftest test-ut-get-test-suite ()
+(ert-deftest test-ut-test-suite-get ()
   (ut-define-mock-framework)
   (with-temporary-dir
    (make-directory "tests")
    (let ((conf (ut-conf-new "foo" ".tests" "tests" 'mock)))
      (let ((suite (ut-test-suite-new conf "foo" "tests/foo" 'mock)))
-       (should (not (null (ut-get-test-suite conf "foo")))))
+       (should (not (null (ut-test-suite-get conf "foo")))))
      (let ((suite (ut-test-suite-new conf "bar" "tests/bar" 'mock)))
-       (should (equal (ut-get-test-suite conf "bar") suite)))
-     (should-error (ut-get-test-suite conf "baz")
+       (should (equal (ut-test-suite-get conf "bar") suite)))
+     (should-error (ut-test-suite-get conf "baz")
                    "Test suite 'baz' does not exist"))))
 
 (provide 'test-ut-test-suite)

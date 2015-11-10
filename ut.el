@@ -479,12 +479,6 @@ If all tests pass within TEST-SUITE, the summary result is 'passed."
               ((member 'error results) 'error)
               (t 'passed)))))
 
-(defun ut-get-test-suite (conf name)
-  "Return test suite from CONF with NAME."
-  (when (not (ut-test-suite-exists-p conf name))
-    (error "Test suite '%s' does not exist" name))
-  (ht-get (ut-test-suites conf) name))
-
 (defun ut-test-suite-get (conf name)
   "Return test suite from CONF with NAME."
   (when (not (ut-test-suite-exists-p conf name))
@@ -549,42 +543,6 @@ something wrong.")
     (run-hook-with-args (ut-framework-new-test-suite-hook framework) conf ts)
     (ht-set! (ut-test-suites conf) name ts)
     ts))
-
-;; (defun ut-new-test-suite (conf name test-dir framework &optional build-process-fn
-;;                                build-filter run-process-fn run-filter)
-;;   "Create new test suite in CONF with NAME.
-
-;; TEST-DIR as the path to the test files.
-;; FRAMEWORK defines the default values for BUILD-PROCESS-FN, BUILD-FILTER,
-;; RUN-PROCESS-FN and RUN-FILTER, though they may be overriden."
-;;   (when (ut-test-suite-exists-p conf name)
-;;     (error "Test suite '%s' already exists" name))
-;;   (when (not (memq framework ut-frameworks))
-;;     (error "Unknown framework '%s'" framework))
-;;   (when (not (or (f-relative? test-dir)
-;;                  (f-ancestor-of? (ut-conf-test-dir conf) test-dir)))
-;;     (error "TEST-DIR must be a relative directory or an absolute path as a
-;;  direct ancestor of the projects test root"))
-;;   (if (not (f-exists? test-dir))
-;;       (make-directory test-dir))
-;;   (let ((new-suite (ht (:test-name name)
-;;                        (:test-dir (f-relative test-dir (ut-conf-test-dir conf)))
-;;                        (:framework framework))))
-;;     (ht-set new-suite :build-process-fn (ut-framework-build-process-hook framework))
-;;     (ht-set new-suite :build-filter-fn
-;;             (if (null build-filter)
-;;                 (ut-framework-build-filter-hook framework)
-;;               build-filter))
-;;     (ht-set new-suite :run-process-fn (ut-framework-run-process-hook framework))
-;;     (ht-set new-suite :run-filter-fn
-;;             (if (null run-filter)
-;;                 (ut-framework-run-filter-hook framework)
-;;               run-filter))
-;;     (when (not (null (ut-framework-new-test-suite-hook framework)))
-;;       (run-hook-with-args (ut-framework-new-test-suite-hook framework)
-;;                           new-suite conf))
-;;     (ht-set (ut-test-suites conf) name new-suite)
-;;     new-suite))
 
 (defun ut-del-test-suite (conf name)
   "Remove from CONF test suite NAME from the list of test suites."

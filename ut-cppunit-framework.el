@@ -142,9 +142,8 @@
 
 (defun ut-cppunit-debug-test-suite (test-suite conf)
   "Debug TEST-SUITE using path information from CONF."
-  (let ((path (f-join (ut-project-dir conf) (ut-conf-test-dir conf)
-                      (ut-test-suite-test-dir test-suite) "src/"
-                      (format "%sTests" (ut-test-suite-name test-suite)))))
+  (let ((path (f-join (ut-conf-test-dir conf) (ut-test-suite-test-dir test-suite)
+                      "src/" (format "%sTests" (ut-test-suite-name test-suite)))))
     (gdb (format ut-cppunit-gdb-cmd-opts path))))
 
 
@@ -156,8 +155,7 @@
 (defun ut-cppunit-setup-new-test-suite (conf test-suite)
   "CONF TEST-SUITE, TODO DOC."
   (let* ((test-suite-name (ut-test-suite-name test-suite))
-         (test-suite-dir (f-join (ut-conf-project-dir conf)
-                                 (ut-conf-test-dir conf)
+         (test-suite-dir (f-join (ut-conf-test-dir conf)
                                  (ut-test-suite-test-dir test-suite)))
          (test-suite-src-dir (f-join test-suite-dir (ut-test-suite-src-dir
                                                      test-suite))))
@@ -167,9 +165,7 @@
     ;; setup default files
     (mapc #'(lambda (pair)
               (ut-m4-expand-file (f-join ut--pkg-root "m4" "cppunit" (car pair))
-                                 (f-join (ut-conf-project-dir conf)
-                                         (ut-conf-test-dir conf)
-                                         (cdr pair))
+                                 (f-join (ut-conf-test-dir conf) (cdr pair))
                                  conf))
           `(("ut-cppunit-test-suite-top-makefile_am.m4" .
              "Makefile.am")
