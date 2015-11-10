@@ -154,31 +154,32 @@
 
 (defun ut-cppunit-setup-new-test-suite (conf test-suite)
   "CONF TEST-SUITE, TODO DOC."
-  (let* ((test-suite-name (ut-test-suite-name test-suite))
-         (test-suite-dir (f-join (ut-conf-test-dir conf)
-                                 (ut-test-suite-test-dir test-suite)))
-         (test-suite-src-dir (f-join test-suite-dir (ut-test-suite-src-dir
-                                                     test-suite))))
+  (let* ((name (ut-test-suite-name test-suite))
+         (root-dir (f-join (ut-conf-test-dir conf) (ut-test-suite-test-dir test-suite)))
+         (src-dir (f-join test-suite-dir (ut-test-suite-src-dir test-suite))))
     ;; setup folder structure
-    (f-mkdir test-suite-dir)
-    (f-mkdir test-suite-src-dir)
+    (f-mkdir root-dir)
+    (f-mkdir src-dir)
     ;; setup default files
     (mapc #'(lambda (pair)
               (ut-m4-expand-file (f-join ut--pkg-root "m4" "cppunit" (car pair))
-                                 (f-join (ut-conf-test-dir conf) (cdr pair))
-                                 conf))
-          `(("ut-cppunit-test-suite-top-makefile_am.m4" .
-             "Makefile.am")
-            ("ut-cppunit-test-suite-src-makefile_am.m4" .
-             ,(f-join test-suite-src-dir "Makefile.am"))
-            ("ut-cppunit-test-suite-main_cc.m4" .
-             ,(f-join test-suite-src-dir "main.cc"))
-            ("ut-cppunit-test-suite-header_hh.m4" .
-             ,(f-join test-suite-src-dir (format "test%s.hh"
-                                                 (capitalize test-suite-name))))
-            ("ut-cppunit-test-suite-source_cc.m4" .
-             ,(f-join test-suite-src-dir (format "test%s.hh"
-                                                (capitalize test-suite-name))))))
+                                 (cdr pair) conf))
+          `((,ut-cppunit-test-suite-top-makefile.am .
+             ,(f-join root-dir "Makefile.am"))
+            (,ut-cppunit-test-suite-src-makefile.am .
+             ,(f-join src-dir "Makefile.am"))
+            (,ut-cppunit-test-suite-main.cc .
+             ,(f-join src-dir "main.cc"))
+            (,ut-cppunit-test-suite-header.hh .
+             ,(f-join src-dir (format "%sTests.hh" (capitalize name))))
+            (,ut-cppunit-test-suite-source.cc .
+             ,(f-join src-dir (format "%sTests.cc" (capitalize name))))))
+    ;; HERE
+    (ut-add-makefile.am-subdir name (f-join (ut-conf-test-dir conf) "Makefile.am"))
+    (ut-add-ac-config-files (f-relative root-dir (ut-conf-project-dir conf))
+                            (f-join (ut-conf-project-dir conf) "configure.ac"))
+    (ut-add-ac-config-files (f-relative src-dir (ut-conf-project-dir conf))
+                            (f-join (ut-conf-project-dir conf) "configure.ac"))
     ))
 
   ;; (let* ((name (ut-test-suite-name test-suite))
@@ -317,11 +318,11 @@ FILE-NAME, TEST-NAME and PROJECT-NAME are passed to copyright."
                      (f-join dir "configure.ac")
                      (ht (:project-name project-name)))
   (ut-m4-expand-file (f-join ut--pkg-root "m4" "cppunit"
-                             ut-cppunit-test-suite-top-makefile.am)
+                             ut-cppunit-top-makefile.am)
                      (f-join dir "Makefile.am")
                      (ht))
   (ut-m4-expand-file (f-join ut--pkg-root "m4" "cppunit"
-                             ut-cppunit-test-suite-src-makefile.am)
+                             ut-cppunit-src-makefile.am)
                      (f-join "src/Makefile.am")
                      (ht (:project-name project-name)))
   (ut-m4-expand-file (f-join ut--pkg-root "m4" "cppunit"

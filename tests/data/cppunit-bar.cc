@@ -1,5 +1,5 @@
 #include "bar.hh"
 
-BAR::BAR()
+Bar::Bar()
 {
 }

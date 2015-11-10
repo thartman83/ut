@@ -189,6 +189,7 @@
 
 (defun ut-m4-expand-file (infile outfile defines)
   "Expand text in INFILE and write the result to OUTFILE using rules in DEFINES."
+  
   (f-write-text (ut-m4-expand-text (f-read-text infile) defines) 'utf-8 outfile))
 
 (defun ut-m4-expand-text (text defines)

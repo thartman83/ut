@@ -126,9 +126,13 @@
   (with-temporary-dir
    (ut-cppunit-setup-autotools-env default-directory "Foo")
    (let ((conf (ut-conf-new "Foo" ".conf" "tests" 'cppunit)))
+     (f-copy (f-join ut--pkg-root "tests/data/cppunit-src-main.cc") "src/main.cc")
      (f-copy (f-join ut--pkg-root "tests/data/cppunit-bar.hh") "src/bar.hh")
      (f-copy (f-join ut--pkg-root "tests/data/cppunit-bar.cc") "src/bar.cc")
-     ; the call to cppunit-setup-new-test-suite should be a side effect here
+     ;; Need to add something here to insert `bar.cc' into the `Program'_SOURCES
+     (ut-add-source-to-makefile.am "bar.cc" "Foo" "src/Makefile.am")
+     (ut-add-source-to-makefile.am "main.cc" "Foo" "src/Makefile.am")
+     ;; the call to cppunit-setup-new-test-suite should be a side effect here
      (ut-test-suite-new conf "bar" (f-join (ut-conf-test-dir conf) "bar")
                         'cppunit "src")
      ;; Check to make sure that the bar test suite was added
@@ -140,8 +144,8 @@
      (should (f-exists? "tests/bar/Makefile.am"))
      (should (f-exists? "tests/bar/src/Makefile.am"))
      (should (f-exists? "tests/bar/src/main.cc"))
-     (should (f-exists? "tests/bar/src/testBar.hh"))
-     (should (f-exists? "tests/bar/src/testBar.cc"))
+     (should (f-exists? "tests/bar/src/BarTests.hh"))
+     (should (f-exists? "tests/bar/src/BarTests.cc"))
      ;; test autoreconf, configure and compile works
      (should (= (call-process "autoreconf" nil nil nil "-i") 0))
      (should (= (call-process (f-expand "./configure") nil nil nil) 0))
