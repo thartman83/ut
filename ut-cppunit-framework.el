@@ -116,8 +116,8 @@
   :risky t
   :type 'string)
 
-(defun ut-cppunit-build-process (test-suite conf buffer)
-  "Return a process used to build TEST-SUITE using CONF in BUFFER."
+(defun ut-cppunit-build-process (conf test-suite buffer)
+  "Return a process used to build CONF/TEST-SUITE in BUFFER."
   (start-process (s-concat "build-" (ut-test-suite-name test-suite-name))
                  buffer "make" "-C" (ut-test-suite-test-dir test-dir)))
 
@@ -126,8 +126,8 @@
   (ht-set suite :build-status (if (= build-exit-status 0) 'built 'error))
   (ht-set suite :build-details (mapconcat #'identity build-output "")))
 
-(defun ut-cppunit-run-process (test-suite conf buffer)
-  "Return a process used to run TEST-SUITE using CONF in BUFFER."
+(defun ut-cppunit-run-process (conf test-suite buffer)
+  "Return a process used to run CONF/TEST-SUITE in BUFFER."
   (start-process (s-concat "run-" (ut-test-suite-name test-suite-name))
                  buffer (format "%s/src/%s" (ut-test-suite-dir test-suite)
                                 (ut-test-suite-name test-suite))
@@ -140,20 +140,20 @@
         (ht-set suite :run-status 'error)
       (ht-set suite :run-status results))))
 
-(defun ut-cppunit-debug-test-suite (test-suite conf)
-  "Debug TEST-SUITE using path information from CONF."
+(defun ut-cppunit-debug-test-suite (conf test-suite)
+  "Debug CONF/TEST-SUITE."
   (let ((path (f-join (ut-conf-test-dir conf) (ut-test-suite-test-dir test-suite)
                       "src/" (format "%sTests" (ut-test-suite-name test-suite)))))
     (gdb (format ut-cppunit-gdb-cmd-opts path))))
 
 
-(defun ut-cppunit-find-test-suite-source (suite conf)
-  "Find the source file associated with SUITE and CONF."
+(defun ut-cppunit-test-suite-find-source (conf test-suite)
+  "Find the source file associated with CONF/TEST-SUITE."
   (f-join (ut-test-suite-test-dir suite)
           (format "src/%sTests.cc" (ut-test-suite-name suite))))
 
-(defun ut-cppunit-setup-new-test-suite (conf test-suite)
-  "CONF TEST-SUITE, TODO DOC."
+(defun ut-cppunit-test-suite-new (conf test-suite)
+  "Generate cppunit files and directory structures for CONF/TEST-SUITE."
   (let* ((name (ut-test-suite-name test-suite))
          (root-dir (f-join (ut-conf-test-dir conf)
                            (ut-test-suite-test-dir test-suite)))
@@ -218,13 +218,15 @@
   ;;                         testsource-text)
   ;;                 'utf-8 (f-join dir (format "src/%sTests.cc" name))))
 
-(defun ut-cppunit-setup-new-test (conf test-name test-suite)
-  "Using CONF, add TEST-NAME to TEST-SUITE."
-  (ut-cppunit-add-new-test-hdr conf test-name test-suite)
-  (ut-cppunit-add-new-test-src conf test-name test-suite))
+(defun ut-cppunit-test-new (conf test-suite test-name)
+  "Add CONF/TEST-SUITE/TEST-NAME."
+  (ut-cppunit-add-new-test-hdr conf test-suite test-name)
+  (ut-cppunit-add-new-test-src conf test-suite test-name))
 
-(defun ut-cppunit-add-new-test-hdr (conf test-name test-suite)
-  "Using CONF, add new TEST-NAME method to TEST-SUITE header file."
+(defun ut-cppunit-add-new-test-hdr (conf test-suite test-name)
+  "Add the new header file to be tested in the main testing objects header file.
+
+CONF/TEST-SUITE/TEST-NAME."
   (let* ((test-src-dir (f-join (ut-conf-test-dir conf) (ut-test-suite-dir test-suite)
                                "src"))
          (hdr-file-name
@@ -236,8 +238,10 @@
     (ut-insert-into-file add-test-text hdr-file-name add-test-pos)
     (ut-revert-switch-buffer hdr-file-name)))
 
-(defun ut-cppunit-add-new-test-src (conf test-name test-suite)
-  "Using CONF, add new TEST-NAME method to TEST-SUITE source file."
+(defun ut-cppunit-add-new-test-src (conf test-suite test-name)
+  "Add the new test to the main testing objects source file.
+
+CONF/TEST-SUITE/TEST-NAME."
   (error "Not Impletemented"))
 
 (defun ut-cppunit-create-test-suite-subdirs (test-suite-dir)
@@ -280,25 +284,16 @@ FILE-NAME, TEST-NAME and PROJECT-NAME are passed to copyright."
                        lines)
                "\n")))
 
-(defun ut-cppunit-create-new-test (conf test-name test-suite)
-  "Using CONF, add TEST-NAME to TEST-SUITE."
-  (error "Not implemented"))
-
-(defun ut-cppunit-find-test-suite-source (suite conf)
-  "Find the source file assocaite with SUITE and CONF."
-  (f-join (ut-test-suite-test-dir suite)
-          (format "src/%sTests.cc" (ut-test-suite-name suite))))
-
 (ut-define-framework cppunit
   :build-process-fn #'ut-cppunit-build-process
   :build-filter-fn #'ut-cppunit-process-build-data
   :run-process-fn #'ut-cppunit-run-process
   :run-filter-fn #'ut-cppunit-process-run-data
   :debug-fn #'ut-cppunit-debug-test-suite
-  :find-source-fn #'ut-cppunit-find-test-suite-source
+  :find-source-fn #'ut-cppunit-test-suite-find-source
   :new-project-fn #'ut-cppunit-setup-new-project
-  :new-test-suite-fn #'ut-cppunit-setup-new-test-suite
-  :new-test-fn #'ut-cppunit-setup-new-test)
+  :new-test-suite-fn #'ut-cppunit-test-suite-new
+  :new-test-fn #'ut-cppunit-test-new)
 
 ;; Everything past here may be a mistake
 

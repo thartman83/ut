@@ -68,27 +68,27 @@
 (ert-defm4test ut-test-cppunit-test-suite-src-makefile.am "cppunit"
                ut-cppunit-test-suite-src-makefile.am
                (ht (:project-dir "/home/someone/projects/foo")
-                   (:test-suite "bar"))
+                   (:test-suite-name "bar"))
                "cppunit-test-suite-src-makefile.am")
 
 (ert-defm4test ut-test-cppunit-test-suite-main.cc "cppunit"
                ut-cppunit-test-suite-main.cc
                (ht (:project-name "utCppunitFrameworkTests")
-                   (:test-suite "foo")
+                   (:test-suite-name "foo")
                    (:license-info "LICENSE"))
                "cppunit-main.cc")
 
 (ert-defm4test ut-test-cppunit-test-suite-header.hh "cppunit"
                ut-cppunit-test-suite-header.hh
                (ht (:project-name "utCppunitFrameworkTests")
-                   (:test-suite "Foo")
+                   (:test-suite-name "Foo")
                    (:license-info "LICENSE"))
                "cppunit-test-suite.hh")
 
 (ert-defm4test ut-test-cppunit-test-suite-source.cc "cppunit"
                ut-cppunit-test-suite-source.cc
                (ht (:project-name "utCppunitFrameworkTests")
-                   (:test-suite "Foo")
+                   (:test-suite-name "Foo")
                    (:license-info "LICENSE"))
                "cppunit-test-suite.cc")
 
@@ -113,7 +113,7 @@
 
 
 ;;;; ?????
-(ert-deftest ut-test-new-cppunit-project ()
+(ert-deftest test-ut-new-cppunit-project ()
   (with-temporary-dir
    (make-directory "src")
    (make-directory "tests")
@@ -122,7 +122,7 @@
      )))
 ;;;; ?????
 
-(ert-deftest ut-test-new-cppunit-test-suite ()
+(ert-deftest test-ut-new-cppunit-test-suite ()
   (with-temporary-dir
    (ut-cppunit-setup-autotools-env default-directory "Foo")
    (let ((conf (ut-conf-new "Foo" ".conf" "tests" 'cppunit)))
@@ -165,7 +165,7 @@
      ;; (should (= (call-process "make" nil nil nil) 0))
      )))
 
-(ert-deftest ut-test-setup-autotools-env ()
+(ert-deftest test-ut-setup-autotools-env ()
   (with-temporary-dir
    (ut-cppunit-setup-autotools-env default-directory)
    (should (f-directory? "config"))
@@ -184,7 +184,7 @@
    (should (= (call-process "autoreconf" nil nil nil "-i") 0))
    (should (= (call-process (f-expand "./configure") nil nil nil) 0))))
 
-(ert-deftest ut-test-add-makefile.am-subdir ()
+(ert-deftest test-ut-add-makefile.am-subdir ()
   (with-temporary-dir
    ;; Test error message when trying to add to non-existant Makefile.am file
    (should-error (ut-add-makefile.am-subdir "bar" "Makefile.am")
@@ -233,7 +233,7 @@
                      (mapcar #'(lambda (dir) (member dir subdirs))
                              (list "foo" "bar" "baz" "bob")))))))
 
-(ert-deftest ut-test-add-ac-config-files ()
+(ert-deftest test-ut-add-ac-config-files ()
   (with-temporary-dir
    ;; Test error message when trying to add to non-existant configure.ac
    (should-error (ut-add-ac-config-files "tests/foo" "configure.ac")

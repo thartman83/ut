@@ -552,8 +552,8 @@ something wrong.")
   (ht-remove (ut-test-suites conf) name)
   nil)
 
-(defun ut-new-test (conf test-name test-suite)
-  "Based on CONF, add TEST-NAME to TEST-SUITE."
+(defun ut-test-new (conf test-suite test-name)
+  "Based on CONF and TEST-SUITE, add a new test called TEST-NAME."
   (run-hook-with-args (ut-framework-new-test-hook (ut-conf-framework conf))
                       conf test-name test-suite))
 
@@ -972,7 +972,7 @@ Display all test information if nil."
   "Delete TEST-SUITE from the current ut definition."
   (error "Not implemented"))
 
-(defun ut-run-test-suite (test-suite conf buffer)
+(defun ut-test-suite-run (conf test-suite buffer)
   "Run TEST-SUITE using CONF in BUFFER."
   (with-current-buffer buffer
     (when (not (ut-test-suite-p conf test-suite))
@@ -987,7 +987,7 @@ Display all test information if nil."
     (let* ((exec-path (cons (ut-conf-test-dir conf) exec-path))
            (process (funcall (symbol-value (ut-test-suite-run-process-hook
                                             test-suite))
-                             test-suite conf buffer)))
+                             conf test-suite buffer)))
       (process-put process :finished nil)
       (process-put process :buffer buffer)
       (process-put process :test-suite test-suite)
@@ -997,11 +997,13 @@ Display all test information if nil."
 
 (defun ut-run-all (conf buffer)
   "Run all of the test suites defined in CONF in BUFFER."
-  (ht-each #'(lambda (key test-suite) (ut-run-test-suite test-suite conf buffer))
+  (ht-each #'(lambda (key test-suite) (ut-test-suite-run conf test-suite buffer))
            (ut-test-suites conf)))
 
-(defun ut-build-test-suite (test-suite conf buffer)
-  "Run the build-process-hook for TEST-SUITE with CONF in BUFFER."
+(defun ut-test-suite-build (conf test-suite buffer)
+  "Build a test suite.
+
+Using CONF and TEST-SUITE on BUFFER."
   (with-current-buffer buffer
     (when (not (ut-test-suite-p conf test-suite))
       (error "Could not find test suite '%s' to build"
@@ -1026,19 +1028,19 @@ Display all test information if nil."
 
 (defun ut-build-all (conf buffer)
   "Build all of the test suites defined in CONF in BUFFER."
-  (ht-each #'(lambda (key test-suite) (ut-build-test-suite test-suite conf buffer))
+  (ht-each #'(lambda (key test-suite) (ut-test-suite-build conf test-suite buffer))
            (ut-test-suites conf)))
 
-(defun ut-debug-test-suite (test-suite conf)
-  "Call debug hook for TEST-SUITE with CONF based on the framework assigned to the test-suite."
+(defun ut-test-suite-debug (conf test-suite)
+  "Call debug hook for CONF/TEST-SUITE."
   (run-hook-with-args (ut-framework-debug-hook (ut-test-suite-framework test-suite))
-                      test-suite conf))
+                      conf test-suite))
 
-(defun ut-find-test-suite-source (test-suite conf)
-  "Find and open the source file associated with TEST-SUITE and CONF."
+(defun ut-test-suite-find-source (conf test-suite)
+  "Find and open the source file associated with CONF/TEST-SUITE."
   (find-file (funcall (symbol-value (ut-framework-find-source-hook
                                      (ut-test-suite-framework test-suite)))
-            test-suite conf)))
+                      conf test-suite)))
 
 (defun ut-toggle ()
   "Toggle the narrowing/widening of the context sensitive region."
@@ -1123,7 +1125,7 @@ Display all test information if nil."
 
 ;; Interactive Functions
 
-(defun ut-new-conf-interactive (project-name conf-file test-dir framework)
+(defun ut-conf-new-interactive (project-name conf-file test-dir framework)
   "Collect parameters to setup a new testing environment for PROJECT-NAME.
 
 This includes the location where the CONF-FILE file will be save, the TEST-DIR
@@ -1158,8 +1160,8 @@ and the FRAMEWORK associated with the project."
      (list c p td f)))
   (ut-conf-new project-name conf-file test-dir framework))
 
-(defun ut-new-test-interactive (test-name test-suite)
-  "Add a TEST-NAME to the current TEST-SUITE."
+(defun ut-test-new-interactive (test-suite test-name)
+  "Create TEST-SUITE/TEST-NAME."
   (interactive (let* ((ts (ut-get-test-suite-at-point))
                       (tn (if (null ts)
                               (error "No test suite at point")
@@ -1169,7 +1171,7 @@ and the FRAMEWORK associated with the project."
                  (list tn ts)))
   (when (not (ut-buffer-p))
     (error "Not in UT buffer"))
-  (ut-new-test (buffer-local-value 'ut-conf (current-buffer)) test-name test-suite))
+  (ut-test-new (buffer-local-value 'ut-conf (current-buffer)) test-suite test-name))
 
 (defun ut-build-interactive ()
   "Interactive version of ut-build-test-suite.  Build CONF/TEST-SUITE."
@@ -1179,8 +1181,8 @@ and the FRAMEWORK associated with the project."
   (let ((test-suite (ut-get-test-suite-at-point)))
     (when (null test-suite)
       (error "No test suite at point"))
-    (ut-build-test-suite test-suite (buffer-local-value 'ut-conf (current-buffer))
-                         (current-buffer))))
+    (ut-test-suite-build (buffer-local-value 'ut-conf (current-buffer))
+                         test-suite (current-buffer))))
 
 (defun ut-build-all-interactive ()
   "Interactive version of ut-build-all."
@@ -1197,7 +1199,7 @@ and the FRAMEWORK associated with the project."
   (let ((test-suite (ut-get-test-suite-at-point)))
     (when (null test-suite)
       (error "No test suite at point"))
-    (ut-run-test-suite test-suite (buffer-local-value 'ut-conf (current-buffer))
+    (ut-test-suite-run (buffer-local-value 'ut-conf (current-buffer)) test-suite
                        (current-buffer))))
 
 (defun ut-run-all-interactive ()
@@ -1214,7 +1216,7 @@ and the FRAMEWORK associated with the project."
     (error "Not in UT buffer"))
   (let ((test-suite (ut-get-test-suite-at-point))
         (conf (buffer-local-value 'ut-conf (current-buffer))))
-    (ut-debug-test-suite test-suite conf)))
+    (ut-test-suite-debug conf test-suite)))
 
 (defun ut-find-test-suite-source-interactive ()
   "Find and load the source file associated with the test suite."
@@ -1223,7 +1225,7 @@ and the FRAMEWORK associated with the project."
     (error "Not in UT buffer"))
   (let ((test-suite (ut-get-test-suite-at-point))
         (conf (buffer-local-value 'ut-conf (current-buffer))))
-    (ut-find-test-suite-source test-suite conf)))
+    (ut-find-test-suite-source conf test-suite)))
 
 ;; Main entry function and mode defuns
 
@@ -1311,7 +1313,7 @@ and the FRAMEWORK associated with the project."
 (defvar ut-mode-map
   (let ((map (make-sparse-keymap)))
     (suppress-keymap map t)
-    (define-key map "n" 'ut-new-test-interactive)
+    (define-key map "n" 'ut-test-new-interactive)
     (define-key map "a" 'ut-add-test-suite)
     (define-key map "x" 'ut-delete-test-suite)
     (define-key map "r" 'ut-run-interactive)
