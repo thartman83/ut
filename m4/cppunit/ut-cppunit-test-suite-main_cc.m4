@@ -6,7 +6,7 @@ license_info
 `#'include <cppunit/TestResultCollector.h>
 `#'include <cppunit/TestRunner.h>
 `#'include <cppunitsexpoutputter/SexpOutputter.h>
-`#'include "test_suite`'Tests.hh"
+`#'include "test_suite_name`'Tests.hh"
 
 int main(int argc, char *argv[])
 {

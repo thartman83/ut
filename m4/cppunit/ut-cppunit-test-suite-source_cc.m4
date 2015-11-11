@@ -1,11 +1,11 @@
 license_info
-`#'include <test_suite.hh>
-`#'include "test_suite`'Tests.hh"
+`#'include <test_suite_name.hh>
+`#'include "test_suite_name`'Tests.hh"
 
-void test_suite`'Tests::setup()
+void test_suite_name`'Tests::setup()
 {
 }
 
-void test_suite`'Tests::tearDown()
+void test_suite_name`'Tests::tearDown()
 {
 }

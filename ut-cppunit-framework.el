@@ -155,7 +155,8 @@
 (defun ut-cppunit-setup-new-test-suite (conf test-suite)
   "CONF TEST-SUITE, TODO DOC."
   (let* ((name (ut-test-suite-name test-suite))
-         (root-dir (f-join (ut-conf-test-dir conf) (ut-test-suite-test-dir test-suite)))
+         (root-dir (f-join (ut-conf-test-dir conf)
+                           (ut-test-suite-test-dir test-suite)))
          (src-dir (f-join test-suite-dir (ut-test-suite-src-dir test-suite))))
     ;; setup folder structure
     (f-mkdir root-dir)
@@ -163,7 +164,9 @@
     ;; setup default files
     (mapc #'(lambda (pair)
               (ut-m4-expand-file (f-join ut--pkg-root "m4" "cppunit" (car pair))
-                                 (cdr pair) conf))
+                                 (cdr pair)
+                                 (ht-merge conf test-suite
+                                           (ut-get-license-info))))
           `((,ut-cppunit-test-suite-top-makefile.am .
              ,(f-join root-dir "Makefile.am"))
             (,ut-cppunit-test-suite-src-makefile.am .
@@ -171,16 +174,14 @@
             (,ut-cppunit-test-suite-main.cc .
              ,(f-join src-dir "main.cc"))
             (,ut-cppunit-test-suite-header.hh .
-             ,(f-join src-dir (format "%sTests.hh" (capitalize name))))
+             ,(f-join src-dir (format "%sTests.hh" name)))
             (,ut-cppunit-test-suite-source.cc .
-             ,(f-join src-dir (format "%sTests.cc" (capitalize name))))))
-    ;; HERE
+             ,(f-join src-dir (format "%sTests.cc" name)))))
     (ut-add-makefile.am-subdir name (f-join (ut-conf-test-dir conf) "Makefile.am"))
     (ut-add-ac-config-files (f-relative root-dir (ut-conf-project-dir conf))
                             (f-join (ut-conf-project-dir conf) "configure.ac"))
     (ut-add-ac-config-files (f-relative src-dir (ut-conf-project-dir conf))
-                            (f-join (ut-conf-project-dir conf) "configure.ac"))
-    ))
+                            (f-join (ut-conf-project-dir conf) "configure.ac"))))
 
   ;; (let* ((name (ut-test-suite-name test-suite))
   ;;        (dir (f-join (ut-conf-test-dir conf) (ut-test-suite-test-dir test-suite)))
@@ -339,6 +340,10 @@ FILE-NAME, TEST-NAME and PROJECT-NAME are passed to copyright."
                                     nil (f-join ut-root-project-dir name))))
      (list name dir)))
   (ut-cppunit-setup-autotools-env project-dir project-name))
+
+(defun ut-get-license-info ()
+  "Return the default license file, this is largely a stub."
+  (ht (:license-info "/* LICENSE HERE */")))
 
 (provide 'ut-cppunit-framework)
 

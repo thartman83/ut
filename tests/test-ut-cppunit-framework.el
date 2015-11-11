@@ -144,13 +144,26 @@
      (should (f-exists? "tests/bar/Makefile.am"))
      (should (f-exists? "tests/bar/src/Makefile.am"))
      (should (f-exists? "tests/bar/src/main.cc"))
-     (should (f-exists? "tests/bar/src/BarTests.hh"))
-     (should (f-exists? "tests/bar/src/BarTests.cc"))
+     (should (f-exists? "tests/bar/src/barTests.hh"))
+     (should (f-exists? "tests/bar/src/barTests.cc"))
+     ;; test that the new subdir was added to the testing root `Makefile.am'
+     (f-contains? "SUBDIRS = bar" "tests/Makefile")
      ;; test autoreconf, configure and compile works
      (should (= (call-process "autoreconf" nil nil nil "-i") 0))
      (should (= (call-process (f-expand "./configure") nil nil nil) 0))
      (cd "tests/bar/")
-     (should (= (call-process "make" nil nil nil) 0)))))
+     (should (= (call-process "make" nil nil nil) 0))
+     (cd "../../")
+     ;; Now add a second tests
+     ;; (ut-test-suite-new conf "baz" (f-join (ut-conf-test-dir conf) "baz")
+     ;;                    'cppunit "src")
+     ;; (f-contains? "SUBDIRS = bar baz" "tests/Makefile")
+     
+     ;; (should (= (call-process "autoreconf" nil nil nil "-i") 0))
+     ;; (should (= (call-process (f-expand "./configure") nil nil nil) 0))
+     ;; (cd "tests/baz/")
+     ;; (should (= (call-process "make" nil nil nil) 0))
+     )))
 
 (ert-deftest ut-test-setup-autotools-env ()
   (with-temporary-dir
@@ -166,7 +179,8 @@
    (should (f-exists? "README"))
    (should (f-exists? "configure.ac"))
    (should (f-exists? "Makefile.am"))
-   ;; Test that an autoreconf and configure are successful on the barebones environment
+   ;; Test that an autoreconf and configure are successful on the
+   ;; barebones environment
    (should (= (call-process "autoreconf" nil nil nil "-i") 0))
    (should (= (call-process (f-expand "./configure") nil nil nil) 0))))
 
