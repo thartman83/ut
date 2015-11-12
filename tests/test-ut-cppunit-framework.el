@@ -112,6 +112,42 @@
                "cppunit-test-impl-text")
 
 
+(ert-deftest test-ut-cppunit-test-suite-build ()
+  (error "Not implemented"))
+
+(ert-deftest test-ut-cppunit-test-suite-process-build ()
+  (error "Not implemented"))
+
+(ert-deftest test-ut-cppunit-test-suite-run ()
+  (error "Not implemented"))
+
+(ert-deftest test-ut-cppunit-test-suite-process-run ()
+  (error "Not implemented"))
+
+(ert-deftest test-ut-cppunit-test-suite-debug ()
+  (error "Not implemented"))
+
+(ert-deftest test-ut-cppunit-test-suite-find-source ()
+  (error "Not implemented"))
+
+(ert-deftest test-ut-cppunit-test-new ()
+  (error "Not implemented"))
+
+(ert-deftest test-ut-cppunit--add-test-hdr ()
+  (error "Not implemented"))
+
+(ert-deftest test-ut-cppunit--add-test-src ()
+  (error "Not implemented"))
+
+(ert-deftest test-ut-cppunit-test-suite--add-subdir ()
+  (error "Not implemented"))
+
+(ert-deftest test-ut-cppunit-conf-new ()
+  (error "Not implemented"))
+
+(ert-deftest test-ut-cppunit--copyright-and-license ()
+  (error "Not implemented"))
+
 ;;;; ?????
 (ert-deftest test-ut-new-cppunit-project ()
   (with-temporary-dir
@@ -122,7 +158,10 @@
      )))
 ;;;; ?????
 
-(ert-deftest test-ut-new-cppunit-test-suite ()
+(ert-deftest test-ut-cppunit-conf-new ()
+  (error "Not Implemented"))
+
+(ert-deftest test-ut-cppunit-test-suite-new ()
   (with-temporary-dir
    (ut-cppunit-setup-autotools-env default-directory "Foo")
    (let ((conf (ut-conf-new "Foo" ".conf" "tests" 'cppunit)))
