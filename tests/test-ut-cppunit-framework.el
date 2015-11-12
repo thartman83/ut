@@ -155,15 +155,15 @@
      (should (= (call-process "make" nil nil nil) 0))
      (cd "../../")
      ;; Now add a second tests
-     ;; (ut-test-suite-new conf "baz" (f-join (ut-conf-test-dir conf) "baz")
-     ;;                    'cppunit "src")
-     ;; (f-contains? "SUBDIRS = bar baz" "tests/Makefile")
-     
-     ;; (should (= (call-process "autoreconf" nil nil nil "-i") 0))
-     ;; (should (= (call-process (f-expand "./configure") nil nil nil) 0))
-     ;; (cd "tests/baz/")
-     ;; (should (= (call-process "make" nil nil nil) 0))
-     )))
+     (f-copy (f-join ut--pkg-root "tests/data/cppunit-baz.hh") "src/baz.hh")
+     (f-copy (f-join ut--pkg-root "tests/data/cppunit-baz.cc") "src/baz.cc")
+     (ut-test-suite-new conf "baz" (f-join (ut-conf-test-dir conf) "baz")
+                        'cppunit "src")
+     (f-contains? "SUBDIRS = bar baz" "tests/Makefile")
+     (should (= (call-process "autoreconf" nil nil nil "-i") 0))
+     (should (= (call-process (f-expand "./configure") nil nil nil) 0))
+     (cd "tests/baz/")
+     (should (= (call-process "make" nil nil nil) 0)))))
 
 (ert-deftest test-ut-setup-autotools-env ()
   (with-temporary-dir
