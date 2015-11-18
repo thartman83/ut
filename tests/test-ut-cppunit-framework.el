@@ -131,13 +131,60 @@
   (error "Not implemented"))
 
 (ert-deftest test-ut-cppunit-test-new ()
-  (error "Not implemented"))
+  ;; Setup cc project
+  (with-temporary-dir
+   (ut-cppunit-setup-autotools-env default-directory "Foo")
+   (let ((conf (ut-conf-new "Foo" ".conf" "tests" 'cppunit))
+         (test-name "fooFuncTest"))
+     (f-copy (f-join ut--pkg-root "tests/data/cppunit-src-main.cc") "src/main.cc")
+     (f-copy (f-join ut--pkg-root "tests/data/cppunit-bar.hh") "src/bar.hh")
+     (f-copy (f-join ut--pkg-root "tests/data/cppunit-bar.cc") "src/bar.cc")
+     (ut-add-source-to-makefile.am "bar.cc" "Foo" "src/Makefile.am")
+     (ut-add-source-to-makefile.am "main.cc" "Foo" "src/Makefile.am")
+     (ut-test-suite-new conf "bar" (f-join (ut-conf-test-dir conf) "bar")
+                        'cppunit "src")
+     ;; Add the new test prototype
+     (ut-cppunit-test-new conf (ut-test-suite-get conf "bar") test-name)
+     ;; Test that the new test stub compiles
+     (should (= (call-process "autoreconf" nil nil nil "-i") 0))
+     (should (= (call-process (f-expand "./configure") nil nil nil) 0))
+     (cd "tests/bar/")
+     (should (= (call-process "make" nil nil nil) 0)))))
 
 (ert-deftest test-ut-cppunit--add-test-hdr ()
-  (error "Not implemented"))
+  ;; Setup cc project
+  (with-temporary-dir
+   (ut-cppunit-setup-autotools-env default-directory "Foo")
+   (let ((conf (ut-conf-new "Foo" ".conf" "tests" 'cppunit))
+         (test-name "fooFuncTest"))
+     (f-copy (f-join ut--pkg-root "tests/data/cppunit-src-main.cc") "src/main.cc")
+     (f-copy (f-join ut--pkg-root "tests/data/cppunit-bar.hh") "src/bar.hh")
+     (f-copy (f-join ut--pkg-root "tests/data/cppunit-bar.cc") "src/bar.cc")
+     (ut-add-source-to-makefile.am "bar.cc" "Foo" "src/Makefile.am")
+     (ut-add-source-to-makefile.am "main.cc" "Foo" "src/Makefile.am")
+     (ut-test-suite-new conf "bar" (f-join (ut-conf-test-dir conf) "bar")
+                        'cppunit "src")
+     ;; Add the new test prototype
+     (ut-cppunit-test-new-hdr conf (ut-test-suite-get conf "bar") test-name)
+     (should (f-contains? (format "void %s();" ))))))
 
 (ert-deftest test-ut-cppunit--add-test-src ()
-  (error "Not implemented"))
+  ;; Setup cc project
+  (with-temporary-dir
+   (ut-cppunit-setup-autotools-env default-directory "Foo")
+   (let ((conf (ut-conf-new "Foo" ".conf" "tests" 'cppunit))
+         (test-name "fooFuncTest"))
+     (f-copy (f-join ut--pkg-root "tests/data/cppunit-src-main.cc") "src/main.cc")
+     (f-copy (f-join ut--pkg-root "tests/data/cppunit-bar.hh") "src/bar.hh")
+     (f-copy (f-join ut--pkg-root "tests/data/cppunit-bar.cc") "src/bar.cc")
+     (ut-add-source-to-makefile.am "bar.cc" "Foo" "src/Makefile.am")
+     (ut-add-source-to-makefile.am "main.cc" "Foo" "src/Makefile.am")
+     (ut-test-suite-new conf "bar" (f-join (ut-conf-test-dir conf) "bar")
+                        'cppunit "src")
+     ;; Add the new test prototype
+     (ut-cppunit-test-new-src conf (ut-test-suite-get conf "bar") test-name)
+     (should (f-contains? (format "void %s::%s()\n{\n\n}"
+                                  (ut-test-suite-name test-suite) test-name))))))
 
 (ert-deftest test-ut-cppunit-test-suite--add-subdir ()
   (error "Not implemented"))

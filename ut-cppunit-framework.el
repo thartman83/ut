@@ -188,14 +188,14 @@
   (ut-cppunit-add-new-test-hdr conf test-suite test-name)
   (ut-cppunit-add-new-test-src conf test-suite test-name))
 
-(defun ut-cppunit-add-new-test-hdr (conf test-suite test-name)
-  "Add the new header file to be tested in the main testing objects header file.
-
-CONF/TEST-SUITE/TEST-NAME."
-  (let* ((test-src-dir (f-join (ut-conf-test-dir conf) (ut-test-suite-dir test-suite)
-                               "src"))
+(defun ut-cppunit-test-new-hdr (conf test-suite test-name)
+  "Add CONF/TEST-SUITE/TEST-NAME stub function to the TEST-SUITE hdr file."
+  (let* ((test-src-dir (f-join (ut-conf-test-dir conf)
+                               (ut-test-suite-test-dir test-suite)
+                               (ut-test-suite-src-dir test-suite)))
          (hdr-file-name
-          (f-join test-src-dir (format "%sTests.hh" (ut-test-suite-name test-suite))))
+          (f-join test-src-dir (format "%sTests.hh" (ut-test-suite-name
+                                                     test-suite))))
          (add-test-text (ut-m4-expand-text ut-cppunit-hdr-add-test-text
                                            (ht (:test-name test-name))))
          (add-test-pos (ut-cppunit-find-hdr-test-suite-sentinel-line hdr-file-name)))
@@ -203,7 +203,7 @@ CONF/TEST-SUITE/TEST-NAME."
     (ut-insert-into-file add-test-text hdr-file-name add-test-pos)
     (ut-revert-switch-buffer hdr-file-name)))
 
-(defun ut-cppunit-add-new-test-src (conf test-suite test-name)
+(defun ut-cppunit-test-new-src (conf test-suite test-name)
   "Add the new test to the main testing objects source file.
 
 CONF/TEST-SUITE/TEST-NAME."
