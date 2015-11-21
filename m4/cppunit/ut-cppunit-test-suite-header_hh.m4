@@ -13,6 +13,8 @@ public:
    void setup();
    void tearDown();
 
+// BEGIN TESTS
+// END TESTS
 };
 
 CPPUNIT_TEST_SUITE_REGISTRATION(test_suite_name`'Tests);

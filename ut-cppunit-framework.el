@@ -91,7 +91,7 @@
 
 ;;; Test suite text
 
-(defcustom ut-cppunit-add-test-hdr-text "ut-cppunit-add-test-hdr-text.m4"
+(defcustom ut-cppunit-hdr-add-test-text "ut-cppunit-add-test-hdr-text.m4"
   "Default code to add a new test to a cppunit test-suite."
   :group 'ut-cppunit
   :risky t
@@ -190,18 +190,20 @@
 
 (defun ut-cppunit-test-new-hdr (conf test-suite test-name)
   "Add CONF/TEST-SUITE/TEST-NAME stub function to the TEST-SUITE hdr file."
-  (let* ((test-src-dir (f-join (ut-conf-test-dir conf)
-                               (ut-test-suite-test-dir test-suite)
-                               (ut-test-suite-src-dir test-suite)))
-         (hdr-file-name
-          (f-join test-src-dir (format "%sTests.hh" (ut-test-suite-name
-                                                     test-suite))))
-         (add-test-text (ut-m4-expand-text ut-cppunit-hdr-add-test-text
-                                           (ht (:test-name test-name))))
-         (add-test-pos (ut-cppunit-find-hdr-test-suite-sentinel-line hdr-file-name)))
-;; Need to add expand text function
-    (ut-insert-into-file add-test-text hdr-file-name add-test-pos)
+  (let ((hdr-file-name (ut-cppunit-test-suite-hdr-file conf test-suite))
+        (test-text (ut-m4-expand-text (f-read (f-join ut--pkg-root "m4" "cppunit"
+                                                      ut-cppunit-hdr-add-test-text))
+                                      (ht (:test-name test-name)))))
+    (ut-insert-into-file test-text hdr-file-name
+                         (ut-cppunit-test-suite-hdr-sentinel-line hdr-file-name))
     (ut-revert-switch-buffer hdr-file-name)))
+
+(defun ut-cppunit-test-suite-hdr-file (conf test-suite)
+  "Return the path to the header file for CONF/TEST-SUITE."
+  (f-join (ut-conf-test-dir conf)
+          (ut-test-suite-test-dir test-suite)
+          (ut-test-suite-src-dir test-suite)
+          (format "%sTests.hh" (ut-test-suite-name test-suite))))
 
 (defun ut-cppunit-test-new-src (conf test-suite test-name)
   "Add the new test to the main testing objects source file.
@@ -248,6 +250,13 @@ FILE-NAME, TEST-NAME and PROJECT-NAME are passed to copyright."
                                    "*/"))
                        lines)
                "\n")))
+
+(defun ut-cppunit-test-suite-hdr-sentinel-line (hdr-file-name)
+  "Find and return the line in test-suite containing the sentinel in HDR-FILE-NAME."
+  (let ((lineno (ut-find-line-in-file "// END TESTS" hdr-file-name)))
+    (when (null lineno)
+      (error "Unable to find header sentinel in `%s'" hdr-file-name))
+    lineno))
 
 (ut-define-framework cppunit
   :build-process-fn #'ut-cppunit-build-process

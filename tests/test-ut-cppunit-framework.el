@@ -162,11 +162,12 @@
      (f-copy (f-join ut--pkg-root "tests/data/cppunit-bar.cc") "src/bar.cc")
      (ut-add-source-to-makefile.am "bar.cc" "Foo" "src/Makefile.am")
      (ut-add-source-to-makefile.am "main.cc" "Foo" "src/Makefile.am")
-     (ut-test-suite-new conf "bar" (f-join (ut-conf-test-dir conf) "bar")
-                        'cppunit "src")
-     ;; Add the new test prototype
-     (ut-cppunit-test-new-hdr conf (ut-test-suite-get conf "bar") test-name)
-     (should (f-contains? (format "void %s();" ))))))
+     (let ((ts (ut-test-suite-new conf "bar" (f-join (ut-conf-test-dir conf) "bar")
+                                  'cppunit "src")))
+       ;; Add the new test prototype
+       (ut-cppunit-test-new-hdr conf ts test-name)
+       (should (f-contains? (format "void %s();" test-name)
+                            (ut-cppunit-test-suite-hdr-file conf ts)))))))
 
 (ert-deftest test-ut-cppunit--add-test-src ()
   ;; Setup cc project
