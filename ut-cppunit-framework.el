@@ -91,7 +91,7 @@
 
 ;;; Test suite text
 
-(defcustom ut-cppunit-hdr-add-test-text "ut-cppunit-add-test-hdr-text.m4"
+(defcustom ut-cppunit-test-cppunit-text "ut-cppunit-test-cppunit-text.m4"
   "Default code to add a new test to a cppunit test-suite."
   :group 'ut-cppunit
   :risky t
@@ -185,17 +185,23 @@
 
 (defun ut-cppunit-test-new (conf test-suite test-name)
   "Add CONF/TEST-SUITE/TEST-NAME."
-  (ut-cppunit-add-new-test-hdr conf test-suite test-name)
-  (ut-cppunit-add-new-test-src conf test-suite test-name))
+  (ut-cppunit-test-new-hdr conf test-suite test-name)
+  (ut-cppunit-test-new-src conf test-suite test-name))
 
 (defun ut-cppunit-test-new-hdr (conf test-suite test-name)
   "Add CONF/TEST-SUITE/TEST-NAME stub function to the TEST-SUITE hdr file."
   (let ((hdr-file-name (ut-cppunit-test-suite-hdr-file conf test-suite))
-        (test-text (ut-m4-expand-text (f-read (f-join ut--pkg-root "m4" "cppunit"
-                                                      ut-cppunit-hdr-add-test-text))
-                                      (ht (:test-name test-name)))))
-    (ut-insert-into-file test-text hdr-file-name
-                         (ut-cppunit-test-suite-hdr-sentinel-line hdr-file-name))
+        (proto-text (ut-m4-expand-text (f-read (f-join ut--pkg-root "m4" "cppunit"
+                                                       ut-cppunit-test-proto-text))
+                                       (ht (:test-name test-name))))
+        (cppunit-text (ut-m4-expand-text (f-read (f-join ut--pkg-root "m4" "cppunit"
+                                                         ut-cppunit-test-cppunit-text))
+                                         (ht (:test-name test-name)))))
+    ;; Add function prototype
+    (ut-insert-into-file proto-text hdr-file-name
+                         (ut-cppunit-test-suite-proto-sentinel-line hdr-file-name))
+    (ut-insert-into-file cppunit-text hdr-file-name
+                         (ut-cppunit-test-suite-cppunit-sentinel-line hdr-file-name))
     (ut-revert-switch-buffer hdr-file-name)))
 
 (defun ut-cppunit-test-suite-hdr-file (conf test-suite)
@@ -251,11 +257,18 @@ FILE-NAME, TEST-NAME and PROJECT-NAME are passed to copyright."
                        lines)
                "\n")))
 
-(defun ut-cppunit-test-suite-hdr-sentinel-line (hdr-file-name)
+(defun ut-cppunit-test-suite-proto-sentinel-line (hdr-file-name)
   "Find and return the line in test-suite containing the sentinel in HDR-FILE-NAME."
   (let ((lineno (ut-find-line-in-file "// END TESTS" hdr-file-name)))
     (when (null lineno)
       (error "Unable to find header sentinel in `%s'" hdr-file-name))
+    lineno))
+
+(defun ut-cppunit-test-suite-cppunit-sentinel-line (hdr-file-name)
+  "Find and return the line in HDR-FILE-NAME with the cppunit sentinel."
+  (let ((lineno (ut-find-line-in-file "CPPUNIT_TEST_SUITE_END();" hdr-file-name)))
+    (when (null lineno)
+      (error "Unable to find cppunit sentinel in `%s'" hdr-file-name))
     lineno))
 
 (ut-define-framework cppunit

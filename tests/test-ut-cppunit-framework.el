@@ -36,7 +36,7 @@
               ut-cppunit-test-suite-main.cc
               ut-cppunit-test-suite-header.hh
               ut-cppunit-test-suite-source.cc
-              ut-cppunit-add-test-hdr-text
+              ut-cppunit-test-cppunit-text
               ut-cppunit-test-proto-text
               ut-cppunit-test-impl-text)))
 
@@ -92,8 +92,8 @@
                    (:license-info "LICENSE"))
                "cppunit-test-suite.cc")
 
-(ert-defm4test ut-test-cppunit-add-test-hdr-text "cppunit"
-               ut-cppunit-add-test-hdr-text
+(ert-defm4test ut-test-cppunit-test-cppunit-text "cppunit"
+               ut-cppunit-test-cppunit-text
                (ht (:test-name "TestBar")
                    (:license-info "LICENSE"))
                "cppunit-test-hdr-text")
@@ -143,15 +143,21 @@
      (ut-add-source-to-makefile.am "main.cc" "Foo" "src/Makefile.am")
      (ut-test-suite-new conf "bar" (f-join (ut-conf-test-dir conf) "bar")
                         'cppunit "src")
-     ;; Add the new test prototype
      (ut-cppunit-test-new conf (ut-test-suite-get conf "bar") test-name)
-     ;; Test that the new test stub compiles
+     ;; This is a bit redundant and also code duplication but better safe than sorry here
+     (should (f-contains? (format "void %s();" test-name)
+                            (ut-cppunit-test-suite-hdr-file conf ts)))
+     (should (f-contains? (format "CPPUNIT_TEST( %s );" test-name)
+                          (ut-cppunit-test-suite-hdr-file conf ts)))
+     (should (f-contains? (format "void %s::%s()\n{\n\n}"
+                                  (ut-test-suite-name test-suite) test-name)))
+     ;; Test that the new test builds properly
      (should (= (call-process "autoreconf" nil nil nil "-i") 0))
      (should (= (call-process (f-expand "./configure") nil nil nil) 0))
-     (cd "tests/bar/")
+     (cd "tests/bar")
      (should (= (call-process "make" nil nil nil) 0)))))
 
-(ert-deftest test-ut-cppunit--add-test-hdr ()
+(ert-deftest test-ut-cppunit-test-new-hdr ()
   ;; Setup cc project
   (with-temporary-dir
    (ut-cppunit-setup-autotools-env default-directory "Foo")
@@ -164,12 +170,13 @@
      (ut-add-source-to-makefile.am "main.cc" "Foo" "src/Makefile.am")
      (let ((ts (ut-test-suite-new conf "bar" (f-join (ut-conf-test-dir conf) "bar")
                                   'cppunit "src")))
-       ;; Add the new test prototype
        (ut-cppunit-test-new-hdr conf ts test-name)
        (should (f-contains? (format "void %s();" test-name)
+                            (ut-cppunit-test-suite-hdr-file conf ts)))
+       (should (f-contains? (format "CPPUNIT_TEST( %s );" test-name)
                             (ut-cppunit-test-suite-hdr-file conf ts)))))))
 
-(ert-deftest test-ut-cppunit--add-test-src ()
+(ert-deftest test-ut-cppunit-test-new-src ()
   ;; Setup cc project
   (with-temporary-dir
    (ut-cppunit-setup-autotools-env default-directory "Foo")
@@ -182,14 +189,13 @@
      (ut-add-source-to-makefile.am "main.cc" "Foo" "src/Makefile.am")
      (ut-test-suite-new conf "bar" (f-join (ut-conf-test-dir conf) "bar")
                         'cppunit "src")
-     ;; Add the new test prototype
      (ut-cppunit-test-new-src conf (ut-test-suite-get conf "bar") test-name)
      (should (f-contains? (format "void %s::%s()\n{\n\n}"
                                   (ut-test-suite-name test-suite) test-name))))))
 
 (ert-deftest test-ut-cppunit-test-suite--add-subdir ()
   (error "Not implemented"))
-
+   
 (ert-deftest test-ut-cppunit-conf-new ()
   (error "Not implemented"))
 

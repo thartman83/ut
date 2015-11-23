@@ -150,7 +150,8 @@
 
 (defun ut-find-line-in-file (str file-name)
   "Find the zero index line number of the first occurance of STR in FILE-NAME."
-  (cl-position str (split-string (f-read-text file-name) "\n") :test #'string=))
+  (cl-position str (mapcar #'s-trim (split-string (f-read-text file-name) "\n"))
+               :test #'string=))
 
 (defun ut-insert-into-file (str file-name line-number)
   "Insert STR into FILE-NAME at LINE-NUMBER."
