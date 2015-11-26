@@ -113,22 +113,22 @@
 
 
 (ert-deftest test-ut-cppunit-test-suite-build ()
-  (error "Not implemented"))
+  (error "`test-ut-cppunit-test-suite-build' Not implemented"))
 
 (ert-deftest test-ut-cppunit-test-suite-process-build ()
-  (error "Not implemented"))
+  (error "`test-ut-cppunit-test-suite-process-build' Not implemented"))
 
 (ert-deftest test-ut-cppunit-test-suite-run ()
-  (error "Not implemented"))
+  (error "`test-ut-cppunit-test-suite-run' Not implemented"))
 
 (ert-deftest test-ut-cppunit-test-suite-process-run ()
-  (error "Not implemented"))
+  (error "`test-ut-cppunit-test-suite-process-run' Not implemented"))
 
 (ert-deftest test-ut-cppunit-test-suite-debug ()
-  (error "Not implemented"))
+  (error "`test-ut-cppunit-test-suite-debug' Not implemented"))
 
 (ert-deftest test-ut-cppunit-test-suite-find-source ()
-  (error "Not implemented"))
+  (error "`test-ut-cppunit-test-suite-find-source' Not implemented"))
 
 (ert-deftest test-ut-cppunit-test-new ()
   ;; Setup cc project
@@ -194,13 +194,13 @@
                                   (ut-test-suite-name test-suite) test-name))))))
 
 (ert-deftest test-ut-cppunit-test-suite--add-subdir ()
-  (error "Not implemented"))
+  (error "`test-ut-cppunit-test-suite--add-subdir' Not implemented"))
    
 (ert-deftest test-ut-cppunit-conf-new ()
-  (error "Not implemented"))
+  (error "`test-ut-cppunit-conf-new' Not implemented"))
 
 (ert-deftest test-ut-cppunit--copyright-and-license ()
-  (error "Not implemented"))
+  (error "`test-ut-cppunit--copyright-and-license' Not implemented"))
 
 ;;;; ?????
 (ert-deftest test-ut-new-cppunit-project ()
@@ -211,9 +211,6 @@
      (should (f-exists? (f-join (f-expand default-directory) "tests/Makefile.am")))
      )))
 ;;;; ?????
-
-(ert-deftest test-ut-cppunit-conf-new ()
-  (error "Not Implemented"))
 
 (ert-deftest test-ut-cppunit-test-suite-new ()
   (with-temporary-dir

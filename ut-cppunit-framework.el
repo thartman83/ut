@@ -215,7 +215,7 @@
   "Add the new test to the main testing objects source file.
 
 CONF/TEST-SUITE/TEST-NAME."
-  (error "Not Impletemented"))
+  (error "`ut-cppunit-test-new-src' Not Impletemented"))
 
 (defun ut-cppunit-create-test-suite-subdirs (test-suite-dir)
   "Create the directory structure for a test suite at TEST-SUITE-DIR."
