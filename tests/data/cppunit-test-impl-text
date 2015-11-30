@@ -1,4 +1,4 @@
 void FooTests::TestBar()
 {
-   throw "Not Implemented";
+	throw "Not Implemented";
 }

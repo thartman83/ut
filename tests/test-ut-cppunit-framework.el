@@ -106,7 +106,7 @@
 
 (ert-defm4test ut-test-cppunit-test-impl-text "cppunit"
                ut-cppunit-test-impl-text
-               (ht (:test-suite "Foo")
+               (ht (:test-suite-name "Foo")
                    (:test-name "TestBar")
                    (:license-info "LICENSE"))
                "cppunit-test-impl-text")
@@ -135,26 +135,27 @@
   (with-temporary-dir
    (ut-cppunit-setup-autotools-env default-directory "Foo")
    (let ((conf (ut-conf-new "Foo" ".conf" "tests" 'cppunit))
-         (test-name "fooFuncTest"))
+         (test-name1 "fooFuncTest")
+         (test-name2 "fooFuncOtherTest"))
      (f-copy (f-join ut--pkg-root "tests/data/cppunit-src-main.cc") "src/main.cc")
      (f-copy (f-join ut--pkg-root "tests/data/cppunit-bar.hh") "src/bar.hh")
      (f-copy (f-join ut--pkg-root "tests/data/cppunit-bar.cc") "src/bar.cc")
      (ut-add-source-to-makefile.am "bar.cc" "Foo" "src/Makefile.am")
      (ut-add-source-to-makefile.am "main.cc" "Foo" "src/Makefile.am")
+     (message default-directory)
      (ut-test-suite-new conf "bar" (f-join (ut-conf-test-dir conf) "bar")
                         'cppunit "src")
-     (ut-cppunit-test-new conf (ut-test-suite-get conf "bar") test-name)
-     ;; This is a bit redundant and also code duplication but better safe than sorry here
-     (should (f-contains? (format "void %s();" test-name)
-                            (ut-cppunit-test-suite-hdr-file conf ts)))
-     (should (f-contains? (format "CPPUNIT_TEST( %s );" test-name)
-                          (ut-cppunit-test-suite-hdr-file conf ts)))
-     (should (f-contains? (format "void %s::%s()\n{\n\n}"
-                                  (ut-test-suite-name test-suite) test-name)))
+     (message default-directory)
+     (ut-cppunit-test-new conf (ut-test-suite-get conf "bar") test-name1)
      ;; Test that the new test builds properly
-     (should (= (call-process "autoreconf" nil nil nil "-i") 0))
-     (should (= (call-process (f-expand "./configure") nil nil nil) 0))
-     (cd "tests/bar")
+     (message default-directory)
+     (should (f-exists? "configure.ac"))
+     (should (= (call-process "autoreconf" nil "*UT Log*" nil "-i") 0))
+     (should (= (call-process (f-expand "./configure") nil "*UT Log*" nil) 0))
+     (should (= (call-process "make" nil nil nil) 0))
+     ;; Add a second test to the test suite, autoreconf and configure shouldn't
+     ;; be needed
+     (ut-cppunit-test-new conf (ut-test-suite-get conf "bar") test-name2)
      (should (= (call-process "make" nil nil nil) 0)))))
 
 (ert-deftest test-ut-cppunit-test-new-hdr ()
@@ -187,11 +188,12 @@
      (f-copy (f-join ut--pkg-root "tests/data/cppunit-bar.cc") "src/bar.cc")
      (ut-add-source-to-makefile.am "bar.cc" "Foo" "src/Makefile.am")
      (ut-add-source-to-makefile.am "main.cc" "Foo" "src/Makefile.am")
-     (ut-test-suite-new conf "bar" (f-join (ut-conf-test-dir conf) "bar")
-                        'cppunit "src")
-     (ut-cppunit-test-new-src conf (ut-test-suite-get conf "bar") test-name)
-     (should (f-contains? (format "void %s::%s()\n{\n\n}"
-                                  (ut-test-suite-name test-suite) test-name))))))
+     (let ((ts (ut-test-suite-new conf "bar" (f-join (ut-conf-test-dir conf) "bar")
+                                  'cppunit "src")))
+       (ut-cppunit-test-new-src conf ts test-name)
+       (should (f-contains? (format "void %sTests::%s()\n{\n\tthrow \"Not Implemented\";\n}"
+                                    (ut-test-suite-name ts) test-name)
+                            (ut-cppunit-test-suite-src-file conf ts)))))))
 
 (ert-deftest test-ut-cppunit-test-suite--add-subdir ()
   (error "`test-ut-cppunit-test-suite--add-subdir' Not implemented"))
@@ -239,21 +241,19 @@
      ;; test that the new subdir was added to the testing root `Makefile.am'
      (f-contains? "SUBDIRS = bar" "tests/Makefile")
      ;; test autoreconf, configure and compile works
-     (should (= (call-process "autoreconf" nil nil nil "-i") 0))
-     (should (= (call-process (f-expand "./configure") nil nil nil) 0))
-     (cd "tests/bar/")
-     (should (= (call-process "make" nil nil nil) 0))
-     (cd "../../")
+     (should (= (call-process "autoreconf" nil "*UT Log*" nil "-i") 0))
+     (should (= (call-process (f-expand "./configure") nil "*UT Log*" nil) 0))
+     (should (= (call-process "make" nil "*UT Log*" nil) 0))
      ;; Now add a second tests
      (f-copy (f-join ut--pkg-root "tests/data/cppunit-baz.hh") "src/baz.hh")
      (f-copy (f-join ut--pkg-root "tests/data/cppunit-baz.cc") "src/baz.cc")
+     (ut-add-source-to-makefile.am "baz.cc" "Foo" "src/Makefile.am")
      (ut-test-suite-new conf "baz" (f-join (ut-conf-test-dir conf) "baz")
                         'cppunit "src")
      (f-contains? "SUBDIRS = bar baz" "tests/Makefile")
-     (should (= (call-process "autoreconf" nil nil nil "-i") 0))
-     (should (= (call-process (f-expand "./configure") nil nil nil) 0))
-     (cd "tests/baz/")
-     (should (= (call-process "make" nil nil nil) 0)))))
+     (should (= (call-process "autoreconf" nil "*UT Log*" nil "-i") 0))
+     (should (= (call-process (f-expand "./configure") nil "*UT Log*" nil) 0))
+     (should (= (call-process "make" nil "*UT Log*" nil) 0)))))
 
 (ert-deftest test-ut-setup-autotools-env ()
   (with-temporary-dir

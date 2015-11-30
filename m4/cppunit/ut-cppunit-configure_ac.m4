@@ -4,12 +4,11 @@ AC_PREREQ(2.26)
 
 m4_define([project_name`'_major_version], [0])
 m4_define([project_name`'_minor_version], [1])
-m4_define([project_name`'_version], \
-          [project_name`'_major_version.`'project_name`'_minor_version])
+m4_define([project_name`'_version], [project_name`'_major_version.`'project_name`'_minor_version])
 
-AC_INIT([project_name`'],[0.1])
+AC_INIT([project_name`'], [0.1])
 AC_CONFIG_MACRO_DIR([config])
-AM_INIT_AUTOMAKE([1.11 dist-bzip2])
+AM_INIT_AUTOMAKE([subdir-objects])
 LT_PREREQ([2.2])
 LT_INIT([dlopen])
 

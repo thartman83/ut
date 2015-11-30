@@ -195,14 +195,28 @@
                                                        ut-cppunit-test-proto-text))
                                        (ht (:test-name test-name))))
         (cppunit-text (ut-m4-expand-text (f-read (f-join ut--pkg-root "m4" "cppunit"
-                                                         ut-cppunit-test-cppunit-text))
+                                                        ut-cppunit-test-cppunit-text))
                                          (ht (:test-name test-name)))))
     ;; Add function prototype
     (ut-insert-into-file proto-text hdr-file-name
                          (ut-cppunit-test-suite-proto-sentinel-line hdr-file-name))
     (ut-insert-into-file cppunit-text hdr-file-name
                          (ut-cppunit-test-suite-cppunit-sentinel-line hdr-file-name))
-    (ut-revert-switch-buffer hdr-file-name)))
+;    (ut-revert-switch-buffer hdr-file-name)
+    ))
+
+(defun ut-cppunit-test-new-src (conf test-suite test-name)
+  "Add the new test to the main testing objects source file.
+
+CONF/TEST-SUITE/TEST-NAME."
+  (let ((src-file-name (ut-cppunit-test-suite-src-file conf test-suite))
+        (impl-text (ut-m4-expand-text (f-read (f-join ut--pkg-root "m4" "cppunit"
+                                                      ut-cppunit-test-impl-text))
+                                      (ht (:test-name test-name)
+                                          (:test-suite-name
+                                           (ut-test-suite-name test-suite))))))
+    (ut-insert-into-file impl-text src-file-name
+                         (ut-cppunit-test-suite-impl-sentinel-line src-file-name))))
 
 (defun ut-cppunit-test-suite-hdr-file (conf test-suite)
   "Return the path to the header file for CONF/TEST-SUITE."
@@ -211,11 +225,12 @@
           (ut-test-suite-src-dir test-suite)
           (format "%sTests.hh" (ut-test-suite-name test-suite))))
 
-(defun ut-cppunit-test-new-src (conf test-suite test-name)
-  "Add the new test to the main testing objects source file.
-
-CONF/TEST-SUITE/TEST-NAME."
-  (error "`ut-cppunit-test-new-src' Not Impletemented"))
+(defun ut-cppunit-test-suite-src-file (conf test-suite)
+  "Return the path to the header file for CONF/TEST-SUITE."
+  (f-join (ut-conf-test-dir conf)
+          (ut-test-suite-test-dir test-suite)
+          (ut-test-suite-src-dir test-suite)
+          (format "%sTests.cc" (ut-test-suite-name test-suite))))
 
 (defun ut-cppunit-create-test-suite-subdirs (test-suite-dir)
   "Create the directory structure for a test suite at TEST-SUITE-DIR."
@@ -269,6 +284,13 @@ FILE-NAME, TEST-NAME and PROJECT-NAME are passed to copyright."
   (let ((lineno (ut-find-line-in-file "CPPUNIT_TEST_SUITE_END();" hdr-file-name)))
     (when (null lineno)
       (error "Unable to find cppunit sentinel in `%s'" hdr-file-name))
+    lineno))
+
+(defun ut-cppunit-test-suite-impl-sentinel-line (src-file-name)
+  "Find and return the line in test-suite containing the sentinel in SRC-FILE-NAME."
+  (let ((lineno (ut-find-line-in-file "// END TESTS" src-file-name)))
+    (when (null lineno)
+      (error "Unable to find header sentinel in `%s'" src-file-name))
     lineno))
 
 (ut-define-framework cppunit

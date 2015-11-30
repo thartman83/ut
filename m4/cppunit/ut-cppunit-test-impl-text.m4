@@ -1,4 +1,4 @@
-void test_suite`'Tests::test_name`'()
+void test_suite_name`'Tests::test_name`'()
 {
-   throw "Not Implemented";
+	throw "Not Implemented";
 }

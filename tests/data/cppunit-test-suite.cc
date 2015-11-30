@@ -9,3 +9,6 @@ void FooTests::setup()
 void FooTests::tearDown()
 {
 }
+
+// BEGIN TESTS
+// END TESTS
