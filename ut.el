@@ -158,9 +158,6 @@
 (defvar ut-conf-buffer-name-template "*UT %s*"
   "Template for ut buffers.")
 
-(defvar ut-log-buffer "*UT Log*"
-  "Name of the buffer for logging UT mode messages.")
-
 (defvar ut-run-signals
   '((1 . sighup)
     (2 . sigint)
@@ -213,12 +210,24 @@
 
 ;; Logging Functions
 
-(defun ut-log-message (msg &rest args)
-  "Log MSG with format ARGS to the ut log buffer."
-  (let ((inhibit-read-only t))
-    (with-current-buffer (get-buffer-create ut-log-buffer)
-      (goto-char (point-max))
-      (insert (format "* %s" (apply #'format (cons msg args)))))))
+(defvar *ut-log-buffer* (get-buffer-create "*UT Log*")
+  "Name of the buffer for logging UT mode messages.")
+
+(defun ut-log-project-buffer (conf)
+  "Return the name of the project log buffer based on the project name in CONF."
+  (get-buffer-create (format "*UT %s Log*" (ut-project-name conf))))
+
+(defun ut-log-message (msg &optional log-buffer)
+  "Write MSG to LOG-BUFFER.
+
+If LOG-BUFFER is nil, use *ut-log-buffer*"
+  (with-current-buffer (if (null log-buffer) *ut-log-buffer* log-buffer)
+    (goto-char (point-max))
+    (insert msg)))
+
+(defun ut-log-project-message (msg conf)
+  "Insert MSG into the project specific log buffer defined in CONF."
+  (ut-log-message msg (ut-project-log-buffer conf)))
 
 ;; Functions to read, write and manipulate the ut configuration file
 
@@ -973,13 +982,13 @@ Display all test information if nil."
   (error "Not implemented"))
 
 (defun ut-test-suite-run (conf test-suite buffer)
-  "Run TEST-SUITE using CONF in BUFFER."
+  "Run CONF/TEST-SUITE in BUFFER."
   (with-current-buffer buffer
     (when (not (ut-test-suite-p conf test-suite))
       (error "Could not find test suite '%s' to run"
              (ut-test-suite-name test-suite)))
-    (ut-log-message "Running test-suite `%s'\n"
-                    (ut-test-suite-name test-suite))
+    (ut-log-message (format "Running test-suite `%s'\n"
+                            (ut-test-suite-name test-suite)))
     (ht-set test-suite :run-status 'running)
     (ht-set test-suite :run-details "")
     (ht-set test-suite :run-time "")
@@ -1008,7 +1017,8 @@ Using CONF and TEST-SUITE on BUFFER."
     (when (not (ut-test-suite-p conf test-suite))
       (error "Could not find test suite '%s' to build"
              (ut-test-suite-name test-suite)))
-    (ut-log-message "Building test-suite `%s' \n" (ut-test-suite-name test-suite))
+    (ut-log-message (format "Building test-suite `%s' \n"
+                            (ut-test-suite-name test-suite)))
     (ht-set test-suite :build-details "")
     (ht-set test-suite :build-time "")
     (ht-set test-suite :build-status 'building)
