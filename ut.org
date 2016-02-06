@@ -2,7 +2,6 @@
 #+AUTHOR: Tom Hartman
 
 * Overview
-
 * Frameworks
 
   UT mode relys on various frameworks to define how to interact with
@@ -88,5 +87,18 @@ Each test is a hash table with the following keys:
 | :file-name   | string/file/nil | File where the most recent error occured |
 | :line-number | integer         | Line where the most recent error occured |
 | :condition   | string          | Reason for test failure                  |
+* UT Process
+** Overview
+   UT process is a means to unify processing calling and associated
+   logging. Frameworks do not need to attach their own process filter
+   and process sentinel functions, these are attached when
+   ut-process-start is called. The sentinel function will pass the
+   process structure, process status (signal or exit), the exit-code
+   (or signal number), and the text output to the post function. An
+   optional pre-func can be provided and is called prior to process
+   creation. This can be used to setup the ut structures in
+   preparation for the process call.
+
+   Each ut environment (project).
 * Notes
 Currently working on testing the ut-framework stuff.

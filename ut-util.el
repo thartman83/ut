@@ -48,6 +48,16 @@
                       plist)
        ,@body)))
 
+(defmacro save-current-directory (&rest body)
+  "Preserve PWD while executing BODY.
+Any change in directory during the course of executing BODY is reverted at the
+end of the block."
+  (declare (indent 0))
+  `(let ((olddir default-directory))
+     (unwind-protect
+         ,@body
+       (cd olddir))))
+
 (defun nil-or-fn-p (fn)
   "Return t if FN is either unbound, nil or a function, nil otherwise."
   (or (null fn) (functionp fn)))

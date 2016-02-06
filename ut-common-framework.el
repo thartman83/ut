@@ -159,11 +159,6 @@
     (f-write-text (mapconcat #'identity (-insert-at line-number str lines) "\n")
                   'utf-8 file-name)))
 
-(defun ut-autoreconf (path)
-  "Run autoreconf -i from the PATH."
-;  (start-shell-process)
-  )
-
 (defun ut-check-open-save-abort (file-name)
   "Check to see if FILE-NAME is open in a buffer, prompts user to save and or abort operation."
   (let ((buf (get-file-buffer file-name)))

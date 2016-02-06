@@ -26,6 +26,8 @@
 (require 'ut)
 (require 'ut-util)
 (require 'ut-common-framework)
+(require 'ut-process)
+(require 'ut-autotools)
 (require 'ut-cppunit-framework)
 ;(require 'ut-cunit-framework)
 
@@ -33,6 +35,8 @@
 (require 'test-helpers)
 (require 'test-ut-conf)
 (require 'ut-mock-framework)
+(require 'test-ut-process)
+(require 'test-ut-autotools)
 ;(require 'test-ut-draw)
 ;(require 'test-ut-result)
 (require 'test-ut-test-suite)

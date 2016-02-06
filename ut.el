@@ -158,37 +158,6 @@
 (defvar ut-conf-buffer-name-template "*UT %s*"
   "Template for ut buffers.")
 
-(defvar ut-run-signals
-  '((1 . sighup)
-    (2 . sigint)
-    (3 . sigquit)
-    (4 . sigill)
-    (5 . sigtrap)
-    (6 . sigabrt)
-    (8 . sigfpe)
-    (9 . sigkill)
-    (10 . sigbus)
-    (11 . sigsegv)
-    (12 . sigsys)
-    (13 . sigpipe)
-    (14 . sigalrm)
-    (15 . sigterm)
-    (16 . sigusr1)
-    (17 . isgusr2)
-    (18 . sigchld)
-    (20 . sigtstp)
-    (21 . sigurg)
-    (22 . sigpoll)
-    (23 . sigstop)
-    (25 . sigcont)
-    (26 . sigttin)
-    (27 . sigttou)
-    (28 . sigvtalrm)
-    (29 . sigprof)
-    (30 . sigxcpu)
-    (31 . sigxfsz))
-  "A-list of unix signals numbers and names.")
-
 (defvar ut--pkg-root (f-dirname (or load-file-name (buffer-file-name)))
   "Base directory of the ut package.")
 
@@ -667,8 +636,8 @@ https//github.com/flycheck/"
          (error (concat "`run-process-fn' is required for framework definition"
                         " and must be a function")))
        (unless (functionp ,run-filter-fn)
-         (error (concat  "`run-filter-fn' is required for framework definition and must"
-                         " be a function")))
+         (error (concat  "`run-filter-fn' is required for framework definition "
+                         "and must be a function")))
        (unless (nil-or-fn-p ,build-process-fn)
          (error "`:build-process-fn' must either be nil or a function"))
        (unless (nil-or-fn-p ,build-filter-fn)
