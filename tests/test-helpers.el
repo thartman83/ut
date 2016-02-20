@@ -137,6 +137,13 @@ If INCLUDEPATHS is non-nil pass it to ut-m4-expand."
                         (f-read-text (f-join ut--pkg-root "tests/data"
                                              ,expected-output)))))))
 
+(defun test-ut--sit-and-spin (proc &optional wait-time)
+  "Wait on PROC output and completion.  Sit for WAIT-TIME seconds if non-nil."
+  (while (process-live-p proc))
+  (accept-process-output proc 1 0 t)
+  (when (numberp wait-time)
+    (sit-for wait-time)))
+
 (provide 'test-helpers)
 
 ;;; test-helpers.el ends here

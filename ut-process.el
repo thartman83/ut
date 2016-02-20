@@ -16,7 +16,7 @@
 ;;; Commentary:
 
 ;; Provide ut with a unified set of tools for launching and
-;; interacting with processes. This includes logging, sentinel call
+;; interacting with processes.  This includes logging, sentinel call
 ;; backs and post processing commands.
 
 ;;; Code:
@@ -109,21 +109,26 @@ this ut-process completes."
   "Return t if UT-PROC will block other processes from executing."
   (ht-get ut-proc :blocking))
 
+(defun ut-process--process (ut-proc)
+  "Return the process object associated with UT-PROC."
+  (ht-get ut-proc :process nil))
+
 ;; UT-PROCESS execution, filter, and sentinel functions
 (defun ut-process--start (conf ut-proc)
   "With CONF as the environment, begin executing UT-PROC."
   (when (ut-conf-process-blocking? conf)
     (error "A process is blocking other processes from running in this project"))
   (when (not (null (ut-process--pre-func ut-proc)))
-    (funcall (ut-process--pre-fun ut-proc)))
+    (funcall (ut-process--pre-func ut-proc)))
   (when (ut-process--blocking? ut-proc)
-    (ht-set! conf :blocking t))
-  (let ((proc (apply #'start-process (append (list (ut-process--name ut-proc)
-                                                   (ut-conf-buffer-name conf)
-                                                   (ut-process--program ut-proc))
-                                             (ut-process--args ut-proc)))))
-    (process-put proc :post-func (ut-process--post-func ut-proc))
+    (ut-conf-process-block conf))
+  (let ((proc (apply #'start-process (ut-process--name ut-proc)
+                     (ut-conf-buffer-name conf)
+                     (ut-process--program ut-proc) (ut-process--args ut-proc))))
     (set-process-filter proc #'ut-process--filter)
+    (process-put proc :post-func (ut-process--post-func ut-proc))
+    (process-put proc :buffer (get-buffer (ut-conf-buffer-name conf)))
+    (ht-set! ut-proc :process proc)
     (set-process-sentinel proc #'ut-process--sentinel)
     (set-process-query-on-exit-flag proc nil)
     proc))
@@ -136,19 +141,25 @@ this ut-process completes."
 (defun ut-process--sentinel (process event)
   "Handle ut PROCESS EVENT."
   (let ((status (process-status process))
-        (exit-code (process-exit-status process)))
+        (exit-code (process-exit-status process))
+        (conf (buffer-local-value 'ut-conf (process-get process :buffer))))
     (cond
      ((eq status 'signal)
-      (ut-log-message (format "Process `%s' throw signal `%s'"
+      (ut-log-message (format "Process `%s' threw signal `%s'\n"
                               (process-command process)
-                              (cdr (assoc exit-code ut-run-signals))))
+                              (cdr (assoc exit-code ut-run-signals)))))
      ((eq status 'exit)
-      (ut-log-message (format "Process `%s' exited with return code `%s'"
+      (ut-log-message (format "Process `%s' exited with exit code `%s'\n"
                               (process-command process)
-                              (process-exit-status process))))))
-    (ut-log-message (process-get process :process-output))
-    (apply (process-get process :post-func) process status exit-code
-           (process-get process :process-output))))
+                              (process-exit-status process)))))
+    (ut-log-message (s-join "\n" (process-get process :process-output)))
+    (when (not (null (process-get process :post-func)))
+      (funcall (process-get process :post-func) process status exit-code
+               (s-join "\n" (process-get process :process-output))))
+    (when (and (ut-conf-process-blocking? conf)
+               (> (length (ut-conf-process-queue conf)) 0))
+      (ut-conf-process-unblock conf)
+      (ut-conf-process-process-queue conf))))
 
 ;; Supplemental ut-conf functions
 
