@@ -134,7 +134,7 @@
   ;; Isolate and test status and exit code handling
   ;; Not sure how to create a stub process object so reset all process functions
   ;; to ht counterparts
-  (with-current-buffer "*UT test*"
+  (with-current-buffer (get-buffer-create "*UT test*")
     (setq-local ut-conf (ht (:project-name "test")))
     (noflet ((process-status (process) (ht-get process :status))
              (process-exit-status (process) (ht-get process :exit-status))
@@ -152,11 +152,12 @@
                                               (:buffer (get-buffer-create "*UT test*"))
                                               (:exit-status 0))
                                           'done)
-                    "Process `echo' exited with exit code `0'\n"))))
+                    "Process `echo' exited with exit code `0'\n")))
+  (kill-buffer (get-buffer-create "*UT test*")))
 
 (ert-deftest test-ut-process--sentinel-post-func ()
   ;; Test that the post func fires off
-  (with-current-buffer "*UT test*"
+  (with-current-buffer (get-buffer-create "*UT test*")
     (setq-local ut-conf (ht (:project-name "test")))
     (noflet ((process-status (process) (ht-get process :status))
              (process-exit-status (process) (ht-get process :exit-status))
@@ -172,50 +173,56 @@
                       (:post-func #'(lambda (process status exit-code output)
                                       (ht-set! process :fired t))))))
         (ut-process--sentinel proc 'done)
-        (should (ht-get proc :fired))))))
+        (should (ht-get proc :fired)))))
+  (kill-buffer (get-buffer-create "*UT test*")))
 
 (ert-deftest test-ut-process-start-to-finish ()
   "Functional testing of the entire ut-process workflow."
   ;; Simple ut-process, touch a file, no post func, no pre func, no blocking
-  (with-current-buffer "*UT test*"
-    (setq-local ut-conf (ht (:project-name "test")))
+  (with-current-buffer (get-buffer-create "*UT test*")
     (with-temporary-dir
-     (let* ((proc (ut-process-create ut-conf "touch-a-file" "touch"
-                                     '("myNewFile.txt"))))
-       (test-ut--sit-and-spin (ut-process--process proc))
+     (setq-local ut-conf (ht (:project-name "test")))
+     (let ((proc (ut-process-create ut-conf "touch-a-file" "touch"
+                                    '("myNewFile.txt"))))
+       (test-ut--sit-and-spin (ut-process--process proc) 1)
        (should (f-exists? "myNewFile.txt"))
        (f-delete "myNewFile.txt"))))
+  (kill-buffer (get-buffer-create "*UT test*"))
   ;; Now another simple test, this time with a output
-  (with-current-buffer "*UT test*"
-    (setq-local ut-conf (ht (:project-name "test")))
-    (let* ((proc (ut-process-create ut-conf "echo" "echo" '("THIS IS OUTPUT"))))
-      (test-ut--sit-and-spin (ut-process--process proc))
-      (should (string= "THIS IS OUTPUT\n"
-                       (s-join "\n" (process-get (ut-process--process proc)
-                                                 :process-output))))))
-    ;; Pre-function testing
-  (with-current-buffer "*UT test*"
-    (setq-local ut-conf (ht (:project-name "test")))
+  (with-current-buffer (get-buffer-create "*UT test*")
     (with-temporary-dir
-     (let* ((proc (ut-process-create ut-conf "prefunc" "echo" '("MOAR OUTPUT")
-                                     nil
+     (setq-local ut-conf (ht (:project-name "test")))
+     (let ((proc (ut-process-create ut-conf "echo" "echo"
+                                    '("THIS IS OUTPUT"))))
+       (test-ut--sit-and-spin (ut-process--process proc) 1)
+       (should (string= "THIS IS OUTPUT\n"
+                        (s-join "\n" (process-get (ut-process--process proc)
+                                                  :process-output)))))))
+  (kill-buffer (get-buffer-create "*UT test*"))
+  ;; Pre-function testing
+  (with-current-buffer (get-buffer-create "*UT test*")
+    (with-temporary-dir
+     (setq-local ut-conf (ht (:project-name "test")))
+     (let ((proc (ut-process-create ut-conf "prefunc" "echo"
+                                    '("MOAR OUTPUT") nil
                                      #'(lambda ()
                                          (f-touch "somefile.txt")))))
-       (should (f-exists? "somefile.txt")))))
-
+       (should (f-exists? "somefile.txt"))
+       (test-ut--sit-and-spin (ut-process--process proc) 1))))
+  (kill-buffer (get-buffer-create "*UT test*"))
   ;; And post func....
-  (with-current-buffer "*UT test*"
-    (setq-local ut-conf (ht (:project-name "test")))
+  (with-current-buffer (get-buffer-create "*UT test*")
     (with-temporary-dir
+     (setq-local ut-conf (ht (:project-name "test")))
      (let* ((dir default-directory)
-            (proc (ut-process-create ut-conf "postfunc" "echo"
-                           (list "-n" dir)
-                           #'(lambda (proc status exit-code output)
-                               (f-write-text "MOST OUTPUT" 'utf-8
-                                             (f-join output "somefile.txt"))))))
+            (proc (ut-process-create ut-conf "postfunc" "echo" (list "-n" dir)
+                               #'(lambda (proc status exit-code output)
+                                   (f-write-text "MOST OUTPUT" 'utf-8
+                                                 (f-join output "somefile.txt"))))))
        (test-ut--sit-and-spin (ut-process--process proc) 1)
        (should (f-exists? (f-join dir "somefile.txt")))
-       (should (string= "MOST OUTPUT" (f-read-text (f-join dir "somefile.txt"))))))))
+       (should (string= "MOST OUTPUT" (f-read-text (f-join dir "somefile.txt")))))))
+  (kill-buffer (get-buffer-create "*UT test*")))
 
 (ert-deftest test-ut-process-blocking ()
   "Functional testing of ut-process blocking."
@@ -246,7 +253,8 @@
        (should (not (ut-conf-process-blocking? ut-conf)))
        (should (not (null (ut-process--process blocked-proc))))
        (test-ut--sit-and-spin (ut-process--process blocked-proc))
-       (should (f-exists? "someOtherFile.txt"))))))
+       (should (f-exists? "someOtherFile.txt")))))
+  (kill-buffer (get-buffer-create "*UT test*")))
 
 (ert-deftest test-ut-process-consecutive-blocking ()
   "Test multiple consecutive blocking processes"
@@ -285,7 +293,36 @@
        (should (not (ut-conf-process-blocking? ut-conf)))
        (should (not (null (ut-process--process blocked-proc))))
        (test-ut--sit-and-spin (ut-process--process blocked-proc))
-       (should (f-exists? "anotherfile.txt"))))))
+       (should (f-exists? "anotherfile.txt")))))
+  (kill-buffer (get-buffer-create "*UT test*")))
+
+(ert-deftest test-ut-process-blocking-multiple-buffers ()
+  "Test that processes in different buffers don't block each other."
+  (with-current-buffer (get-buffer-create "*UT multibuffer*")
+    (with-temporary-dir
+     (setq-local ut-conf (ht (:project-name "multibuffer")))
+     (let* ((dir default-directory)
+            (block-proc (ut-process-create ut-conf "BlockingProcess" "bash"
+                                           (list "-c" wait-until-file-exists.sh
+                                                 "./somefile.txt")
+                                           #'(lambda (proc status exit-code output)
+                                               (f-touch (f-join dir "anotherfile.txt")
+                                                        )) nil t)))
+       ;; the process should be running and blocking
+       (should (eq (process-status (ut-process--process block-proc)) 'run))
+       (should (ut-conf-process-blocking? ut-conf))
+       ;; This process should run normally and not be blocked
+       (with-current-buffer (get-buffer-create "*UT multibuffer2*")
+         (setq-local ut-conf (ht (:project-name "multibuffer2")))
+         (let ((touch-proc (ut-process-create ut-conf "TouchMe" "touch"
+                                              (list (f-join dir "./somefile.txt")))))
+           (should (eq (process-status (ut-process--process touch-proc)) 'run))
+           (test-ut--sit-and-spin (ut-process--process touch-proc))
+           (should (f-exists? (f-join dir "somefile.txt")))))
+       (test-ut--sit-and-spin (ut-process--process block-proc) 1)
+       (should (f-exists? (f-join dir "anotherfile.txt"))))))
+  (should (kill-buffer (get-buffer-create "*UT multibuffer*")))
+  (should (kill-buffer (get-buffer-create "*UT multibuffer2*"))))
 
 
 (provide 'test-ut-process)
