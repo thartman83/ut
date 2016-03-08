@@ -192,7 +192,7 @@
 If LOG-BUFFER is nil, use *ut-log-buffer*"
   (with-current-buffer (if (null log-buffer) *ut-log-buffer* log-buffer)
     (goto-char (point-max))
-    (insert msg)))
+    (insert (s-concat (s-chomp msg) "\n"))))
 
 (defun ut-log-project-message (msg conf)
   "Insert MSG into the project specific log buffer defined in CONF."

@@ -122,9 +122,10 @@ this ut-process completes."
     (funcall (ut-process--pre-func ut-proc)))
   (when (ut-process--blocking? ut-proc)
     (ut-conf-process-block conf))
-  (let ((proc (apply #'start-process (ut-process--name ut-proc)
-                     (ut-conf-buffer-name conf)
-                     (ut-process--program ut-proc) (ut-process--args ut-proc))))
+  (let* ((process-connection-type nil)
+         (proc (apply #'start-process (ut-process--name ut-proc)
+                      (ut-conf-buffer-name conf)
+                      (ut-process--program ut-proc) (ut-process--args ut-proc))))
     (set-process-filter proc #'ut-process--filter)
     (process-put proc :post-func (ut-process--post-func ut-proc))
     (process-put proc :buffer (get-buffer (ut-conf-buffer-name conf)))
@@ -152,7 +153,8 @@ this ut-process completes."
       (ut-log-message (format "Process `%s' exited with exit code `%s'\n"
                               (process-command process)
                               (process-exit-status process)))))
-    (ut-log-message (s-join "\n" (process-get process :process-output)))
+    (ut-log-message (ut-process--format-process-output
+                     (process-get process :process-output)))
     (when (not (null (process-get process :post-func)))
       (funcall (process-get process :post-func) process status exit-code
                (s-join "\n" (process-get process :process-output))))
@@ -160,6 +162,11 @@ this ut-process completes."
                (> (length (ut-conf-process-queue conf)) 0))
       (ut-conf-process-unblock conf)
       (ut-conf-process-process-queue conf))))
+
+(defun ut-process--format-process-output (lines)
+  "Reformat LINES for printing to the UT Log."
+  (let ((output (s-chomp (s-join "" lines))))
+    (s-join "\n" (mapcar #'(lambda (s) (s-concat "\t" s)) (s-lines output)))))
 
 ;; Supplemental ut-conf functions
 
