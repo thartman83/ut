@@ -144,6 +144,22 @@ If INCLUDEPATHS is non-nil pass it to ut-m4-expand."
   (when (numberp wait-time)
     (sit-for wait-time)))
 
+(defmacro with-ut-sandbox (project-name &rest body)
+  "Create a sandbox for ut testing functions to play in.
+
+PROJECT-NAME is the normal value that would be given to a ut-conf
+structure and governs the name of the ut buffer.
+
+BODY is the code to run in the sandbox.  The final form of body is
+returned it BODY completes normally."
+  (declare (indent defun))
+  `(unwind-protect
+    (with-temporary-dir
+     (with-current-buffer (get-buffer-create (s-concat "*UT " ,project-name "*"))
+       (setq-local ut-conf (ht (:project-name ,project-name)))
+       ,@body))
+    (kill-buffer (s-concat "*UT " ,project-name "*"))))
+
 (provide 'test-helpers)
 
 ;;; test-helpers.el ends here

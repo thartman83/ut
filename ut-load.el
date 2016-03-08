@@ -33,8 +33,8 @@
 
 ; UT Testing files
 (require 'test-helpers)
-(require 'test-ut-conf)
 (require 'ut-mock-framework)
+(require 'test-ut-conf)
 (require 'test-ut-process)
 (require 'test-ut-autotools)
 ;(require 'test-ut-draw)
