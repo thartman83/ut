@@ -237,6 +237,15 @@
        (test-ut--sit-and-spin (ut-process--process blocked-proc))
        (should (f-exists? "someOtherFile.txt")))))
 
+(ert-deftest test-ut-process-unblocking ()
+  "Test that a process properly unblocks itself once it is done."
+  (with-ut-sandbox "unblocking"
+    (let* ((block-proc (ut-process-create ut-conf "blocking-process" "touch"
+                                          '("somefile.txt") nil nil t)))
+      (test-ut--sit-and-spin (ut-process--process block-proc) 1)
+      (should (= (length (ut-conf-process-queue ut-conf)) 0))
+      (should (not (ut-conf-process-blocking? ut-conf))))))
+
 (ert-deftest test-ut-process-consecutive-blocking ()
   "Test multiple consecutive blocking processes"
   (with-ut-sandbox "consecutive-blocking"

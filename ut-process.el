@@ -158,9 +158,9 @@ this ut-process completes."
     (when (not (null (process-get process :post-func)))
       (funcall (process-get process :post-func) process status exit-code
                (s-join "\n" (process-get process :process-output))))
-    (when (and (ut-conf-process-blocking? conf)
-               (> (length (ut-conf-process-queue conf)) 0))
-      (ut-conf-process-unblock conf)
+    (when (ut-conf-process-blocking? conf)
+      (ut-conf-process-unblock conf))
+    (when (> (length (ut-conf-process-queue conf)) 0)
       (ut-conf-process-process-queue conf))))
 
 (defun ut-process--format-process-output (lines)

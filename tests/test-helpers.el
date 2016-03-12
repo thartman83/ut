@@ -154,11 +154,14 @@ BODY is the code to run in the sandbox.  The final form of body is
 returned it BODY completes normally."
   (declare (indent defun))
   `(unwind-protect
-    (with-temporary-dir
-     (with-current-buffer (get-buffer-create (s-concat "*UT " ,project-name "*"))
-       (setq-local ut-conf (ht (:project-name ,project-name)))
-       ,@body))
-    (kill-buffer (s-concat "*UT " ,project-name "*"))))
+       (with-temporary-dir
+        (with-current-buffer (get-buffer-create (s-concat "*UT " ,project-name "*"))
+          (setq-local ut-conf (ht (:project-name ,project-name)
+                                  (:project-dir default-directory)))
+          ,@body))
+     (kill-buffer (s-concat "*UT " ,project-name "*"))))
+
+(def-edebug-spec with-ut-sandbox (stringp body))
 
 (provide 'test-helpers)
 
