@@ -21,16 +21,86 @@
 
 (require 'ut-autotools)
 
+(defvar test-ut-autotools-autoreconf-configure.ac
+  "AC_PREREQ(2.26)
+
+m4_define([foo_major_version], [0])
+m4_define([foo_minor_version], [1])
+
+AC_INIT([foo], [0.1])
+AC_CONFIG_MACRO_DIR([config])
+AM_INIT_AUTOMAKE([subdir-objects])
+LT_PREREQ([2.2])
+LT_INIT([dlopen])
+
+AC_PROG_MAKE_SET
+AC_PROG_INSTALL
+AC_PROG_CXX
+AC_LANG(C++)
+AC_PROG_LIBTOOL
+AC_LTDL_DLLIB
+
+AC_OUTPUT")
+
+(defvar test-ut-autotools-configure-configure.ac
+  "AC_PREREQ(2.26)
+
+m4_define([foo_major_version], [0])
+m4_define([foo_minor_version], [1])
+
+AC_INIT([foo], [0.1])
+AC_CONFIG_MACRO_DIR([config])
+AM_INIT_AUTOMAKE([subdir-objects])
+LT_PREREQ([2.2])
+LT_INIT([dlopen])
+
+AC_PROG_MAKE_SET
+AC_PROG_INSTALL
+AC_PROG_CXX
+AC_LANG(C++)
+AC_PROG_LIBTOOL
+AC_LTDL_DLLIB
+
+AC_CONFIG_FILES([Makefile])
+
+AC_OUTPUT")
+
+(defvar test-ut-autotools-configure-makefile.am
+  "bin_PROGRAMS = main
+main_SOURCES = main.cc")
+
+(defvar test-ut-autotools-configure-main.cc
+  "int main(int argc, char ** argv) { return 0; }")
+
 (ert-deftest test-ut-autotools-autoreconf ()
-  "ut-autotools-autoreconf doesn't really do much in terms of
-testing. All the function does is fire off `autoreconf -i' and
-blocks until it returns. Probably need to make sure that it is
-logging properly though, and maybe it shouldn't block?. How
-should it handle errors? Should it trap them?"
-  (error "Not implemented"))
+  (with-ut-sandbox "autoreconf"
+    (f-write-text test-ut-autotools-autoreconf-configure.ac 'utf-8
+                  "configure.ac")
+    (ut-autotools-autoreconf (buffer-local-value 'ut-conf (current-buffer)))
+    (sit-for 15)
+    ;; A lot happens after a reconf depending on whether or not there
+    ;; were files there to begin with, but lets for the moment just
+    ;; check that the configure file was created properly
+    (should (f-exists? "configure"))))
 
 (ert-deftest test-ut-autotools-configure ()
-  (error "Not implemented"))
+  ;; Test that a proper Makefile is created with after a configure
+  ;; with a barebones project skeleton
+  (with-ut-sandbox "configure"
+    (let ((conf (buffer-local-value 'ut-conf (current-buffer))))
+      (f-write-text test-ut-autotools-configure-configure.ac 'utf-8
+                    "configure.ac")
+      (f-write-text test-ut-autotools-configure-makefile.am 'utf-8
+                    "Makefile.am")
+      (mapc #'f-touch '("NEWS" "README" "AUTHORS" "ChangeLog"))
+      (ut-autotools-autoreconf conf)
+      (while (ut-conf-process-blocking? conf)
+        (sit-for 1))
+      (should (f-exists? "configure"))
+      (ut-autotools-configure conf)
+      (while (ut-conf-process-blocking? conf)
+        (sit-for 1))
+      (should (f-exists? "Makefile")))))
 
 (ert-deftest test-ut-autotools-make-check ()
   (error "Not implemented"))

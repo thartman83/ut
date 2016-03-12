@@ -15,14 +15,19 @@
 
 ;;; Commentary:
 
+;; Ut-autotools provides helper functions for interactive with
+;; autotools files and programs.  This should not be seen as a
+;; complete or even nearly complete set.  This set of functions is
+;; given a common set of tools to any framework that needs or wants to
+;; use autotools.
+
 ;;; Code:
 
 (require 'f)
-(require 'ut-util)
 (require 'ut-process)
 
-(defun ut-autotools-autoreconf (ut-buf &optional dir)
-  "Run `autoreconf -i' with UT-BUF as the current buffer.
+(defun ut-autotools-autoreconf (conf &optional dir)
+  "Run `autoreconf -i' for project CONF.
 
 If DIR is non-nil, use DIR as the current working directory.
 
@@ -30,16 +35,23 @@ If DIR is not provided or nil, use `default-directory'."
   (save-current-directory
     (when (not (null dir))
       (cd dir))
-    (ut-process-spawn "autoreconf" (list "-i"))))
+    (ut-process-create conf (s-concat (ut-conf-project-name conf) "-autoconf")
+                       "autoreconf" (list "-i") nil nil t)))
 
-(defun ut-autotools-configure (&optional dir)
-  "Run `./configure' with DIR as the current working directory..
+(defun ut-autotools-configure (conf &optional dir)
+  "Run `./configure' for ut project defined in CONF.
 
 if DIR is not provided or nil, use `default-directory'."
   (save-current-directory
     (when (not (null dir))
       (cd dir))
-    (ut-process-spawn "./configure")))
+    ;; (ut-process-create conf (s-concat (ut-conf-project-name conf) "-configure")
+    ;;                    (f-join (ut-conf-project-dir conf) "configure")
+    ;;                    nil nil t)
+    (ut-process-create conf (s-concat (ut-conf-project-name conf) "-configure")
+                       "bash" (list "-c" (f-join (ut-conf-project-dir conf)
+                                                 "configure")) nil nil t)
+    ))
 
 (defun ut-autotools-make-check (&optional dir)
   "Run `make check' with DIR as the current working directory.
