@@ -45,13 +45,9 @@ if DIR is not provided or nil, use `default-directory'."
   (save-current-directory
     (when (not (null dir))
       (cd dir))
-    ;; (ut-process-create conf (s-concat (ut-conf-project-name conf) "-configure")
-    ;;                    (f-join (ut-conf-project-dir conf) "configure")
-    ;;                    nil nil t)
     (ut-process-create conf (s-concat (ut-conf-project-name conf) "-configure")
                        "bash" (list "-c" (f-join (ut-conf-project-dir conf)
-                                                 "configure")) nil nil t)
-    ))
+                                                 "configure")) nil nil t)))
 
 (defun ut-autotools-make-check (&optional dir)
   "Run `make check' with DIR as the current working directory.

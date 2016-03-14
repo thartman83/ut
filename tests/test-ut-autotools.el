@@ -74,14 +74,16 @@ main_SOURCES = main.cc")
 
 (ert-deftest test-ut-autotools-autoreconf ()
   (with-ut-sandbox "autoreconf"
-    (f-write-text test-ut-autotools-autoreconf-configure.ac 'utf-8
-                  "configure.ac")
-    (ut-autotools-autoreconf (buffer-local-value 'ut-conf (current-buffer)))
-    (sit-for 15)
-    ;; A lot happens after a reconf depending on whether or not there
-    ;; were files there to begin with, but lets for the moment just
-    ;; check that the configure file was created properly
-    (should (f-exists? "configure"))))
+    (let ((conf (buffer-local-value 'ut-conf (current-buffer))))
+      (f-write-text test-ut-autotools-autoreconf-configure.ac 'utf-8
+                    "configure.ac")
+      (ut-autotools-autoreconf conf)
+      (while (ut-conf-process-blocking? conf)
+        (sit-for 1))
+      ;; A lot happens after a reconf depending on whether or not there
+      ;; were files there to begin with, but lets for the moment just
+      ;; check that the configure file was created properly
+      (should (f-exists? "configure")))))
 
 (ert-deftest test-ut-autotools-configure ()
   ;; Test that a proper Makefile is created with after a configure
